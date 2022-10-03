@@ -1,0 +1,6 @@
+bread: '{food} body'
+meat: '{food} come from animal'
+juice: '{water} fruit'
+smoothie: '{cup} fruit'
+salad: '{collection} vegetable leaf leaf'
+sandwich: 'food between bread'

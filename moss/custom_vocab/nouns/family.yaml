@@ -1,0 +1,6 @@
+sibling: 'parent child'
+sister: '{sibling} female'
+brother: '{sibling} male'
+cousin: 'parent sibling child'
+aunt: 'parent sister'
+uncle: 'parent brother'
