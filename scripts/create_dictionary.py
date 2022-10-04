@@ -3,13 +3,11 @@ import yaml
 try: from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
-
+from django.conf import settings
 from moss import carpet, models
-    
 
-CORE_DEFS_PATH = os.path.join('moss', 'core_defs.yaml')
-CORE_SYNONYMS_PATH = os.path.join('moss', 'core_synonyms.yaml')
-CUSTOM_VOCAB_PATH = os.path.join('moss', 'custom_vocab')
+CORE_DEFS_PATH = os.path.join(settings.DICT_PATH, 'core_defs.yaml')
+CORE_SYNONYMS_PATH = os.path.join(settings.DICT_PATH, 'core_synonyms.yaml')
 
 # TODO
 
@@ -38,14 +36,14 @@ def run():
                 terms.append(term)
             definition, _ = models.CoreDefinition.objects.get_or_create(term=key)
             definitions.extend([models.Definition(
-                **carpet.def_to_model_kwargs(term),
+                **carpet.def_to_model_kwargs(term, True, True),
                 core_synonym = definition,
                 source_file = CORE_SYNONYMS_PATH,
             ) for term in val])
         models.Definition.objects.bulk_create(definitions)
     
-    for dir in os.listdir(CUSTOM_VOCAB_PATH):
-        dir = os.path.join(CUSTOM_VOCAB_PATH, dir)
+    for dir in os.listdir(settings.DICT_PATH):
+        dir = os.path.join(settings.DICT_PATH, dir)
         if not os.path.isdir(dir): continue
         for yaml_file in os.listdir(dir):
             yaml_file = os.path.join(dir, yaml_file)
@@ -53,10 +51,11 @@ def run():
             with open(yaml_file) as f:
                 defs = yaml.load(f.read(), SafeLoader)
                 for term, val in defs.items():
+                    print(term)
                     carpet_phrase = carpet.StrPhrase(val)
                     carpet_phrase.extend(carpet.Depth.RECURSIVE)
                     models.Definition.objects.create( 
-                         **carpet.def_to_model_kwargs(term),
+                         **carpet.def_to_model_kwargs(term, True, True),
                         carpet_phrase = carpet.save_definition(carpet_phrase),
                         source_file = yaml_file,
                     )

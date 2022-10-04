@@ -1,6 +1,10 @@
 import enum
-from moss.models import CarpetPhrase, Definition
+import spacy
+from django.conf import settings
+from moss.models import CarpetPhrase, Definition, PosTag
 from string import ascii_lowercase
+
+nlp = spacy.load(settings.SPACY_PACKAGE)
 
 WORD_CHARS = ascii_lowercase + '_\':'
 SHOW_BRACES = False
@@ -51,12 +55,16 @@ class AbstractPhrase:
             self.suffixes +
             ' ') * self.multiplier)[:-1]
     
-def def_to_model_kwargs(term: str) -> dict[str]:
+def def_to_model_kwargs(term: str, infer_pos_tag=False, pos_tag_as_obj=False) -> dict[str]:
     kwargs = dict()
-    term = term.strip().upper()
+    kwargs['term'] = term.strip().lower().replace('_', ' ')
     if ':' in term:
-        kwargs['tag'], term = term.split(':')
-    kwargs['term'] = term.replace('_', ' ').lower()
+        kwargs['pos_tag__abr'], kwargs['term'] = kwargs['term'].split(':')
+        kwargs['pos_tag__abr'] = kwargs['pos_tag__abr'].upper()
+    elif infer_pos_tag:
+        kwargs['pos_tag__abr'] = nlp(term)[0].pos_
+    if kwargs.get('pos_tag__abr') and pos_tag_as_obj:
+        kwargs['pos_tag'] = PosTag.objects.get(abbr=kwargs.pop('pos_tag__abr'))        
     return kwargs
 
 class AbstractParentPhrase(AbstractPhrase):
@@ -76,7 +84,7 @@ class AbstractParentPhrase(AbstractPhrase):
                     self.children[i].suffixes += self.suffixes
                     self.multiplier = 1
                     self.suffixes = ''
-                child.extend()
+                child.extend(depth)
             
     def unwrapped_str(self):
         return ' '.join(map(str, self.children)) or self.phrase_str
@@ -125,12 +133,12 @@ class ModelPhrase(AbstractParentPhrase):
 
 class StrPhrase(AbstractParentPhrase):
     def __init__(self, phrase='', *args, **kwargs):
+        self.phrase_str = phrase.strip().lower()
         super().__init__(*args, **kwargs)
     
     def extend(self, depth=Depth.VOCAB):
-        self.phrase = self.phrase.strip().lower()
         is_term = True
-        for char in self.phrase:
+        for char in self.phrase_str:
             if char not in WORD_CHARS:
                 is_term = False
                 break
@@ -138,43 +146,44 @@ class StrPhrase(AbstractParentPhrase):
         if is_term:
             if depth >= Depth.VOCAB:
                 self.children = [DefinitionPhrase(
-                    Definition.objects.get(**def_to_model_kwargs(self.phrase))
+                    Definition.objects.get(**def_to_model_kwargs(self.phrase_str))
                 )]
-            else:
-                self.phrase_str = self.phrase
-        else:
+        else:        
             child = StrPhrase()
+            print(self.phrase_str)
             parentheses_depth = 0
             braces_depth = 0
             is_multiplying = False
             multiplier_str = ''
 
-            for char in self.phrase + ' ':
+            for char in self.phrase_str + ' ':
                 if char == '(':
-                    if parentheses_depth: child.phrase += char
+                    if parentheses_depth: child.phrase_str += char
                     parentheses_depth += 1
                 elif char == ')':
                     parentheses_depth -= 1
-                    if parentheses_depth: child.phrase += char
+                    if parentheses_depth: child.phrase_str += char
                 elif char == '{':
-                    if braces_depth: child.phrase += char
+                    if braces_depth: child.phrase_str += char
                     else: child.has_braces = True
                     braces_depth += 1
                 elif char == '}':
                     braces_depth -= 1
-                    if braces_depth: child.phrase += char
+                    if braces_depth: child.phrase_str += char
                 elif parentheses_depth or braces_depth:
-                    child.phrase += char
-                elif not child.phrase and char in [e.value for e in ToneChange]:
+                    child.phrase_str += char
+                elif not child.phrase_str and char in [e.value for e in ToneChange]:
                     child.tone_changes += char
                 elif char == '*':
                     is_multiplying = True
                 elif char in WORD_CHARS:
-                    child.phrase += char
+                    child.phrase_str += char
                 elif char.isspace():
                     if multiplier_str:
                         child.multiplier *= int(multiplier_str)
-                    self.children.append(child)
+                    # print(child.phrase_str)
+                    if len(child.phrase_str) > 0:
+                        self.children.append(child)
                     child = StrPhrase()
                     parentheses_depth = 0
                     braces_depth = 0

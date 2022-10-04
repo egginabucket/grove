@@ -6,7 +6,7 @@ air: [air, wind, breeze, gas, vapor]
 all: [all, every]
 and: [and, also, too]
 animal: [animal]
-ass: [ass, end, rear, butt] # varies across archives
+ass: [ass, NOUN:end, rear, butt] # varies across archives
 back: [back, backward, behind, before]
 bad: [bad, 'no']
 beautiful: [beautiful]
@@ -23,8 +23,8 @@ can: [can, possibility, ability]
 cause: [cause, force, make, compel]
 child: [child, descendant, offspring, baby]
 circle: [circle, ball, round, cycle, loop, surround, around, with respect to]
-close: [end, finish, close]
-cloth: [cloth, clothing, fabric, covering]
+close: [VERB:end, finish, close]
+cloth: [cloth, clothing, fabric] # removed covering
 come: [hello, arrive, come, come from] # typo on original site?
 cool: [cool, cold, agreeable, ok]
 count: [count, number, amount]
@@ -42,7 +42,7 @@ fire: [fire, hot, angry]
 foot: [foot, base, least]
 forward: [forward, on behalf of, ahead]
 friend: [friend, nice]
-fruit: [fruit, reward, prize, award, goal, animal]
+fruit: [fruit, reward, prize, award, goal]
 get: [get, take, receive, catch, find]
 girl: [girl, woman, female]
 go: [go, move, goodbye, become]
@@ -59,10 +59,10 @@ it: [she, he, they, it, her, his, theirs, its] # WOKE WWOKEmodified to include g
 knot: [knot, hard, dense, difficult]
 know: [know]
 leaf: [leaf, sheet, paper, flake, petal]
-left: [left, beside, with]
+left: [left, beside] # removed with
 life: [life, energy, power, fuel, vigor]
 light: [light, bright, white]
-like: [like, love]
+like: [VERB:like, love]
 limb: [limb, stick]
 link: [link, connect, relate, copulate]
 machine: [machine, vehicle, car, console] # no word but "vehicle" was listed on 2009 archive
@@ -87,13 +87,13 @@ person: [person]
 picture: [picture, screen, diagram, represtation]
 place: [place, at]
 plant: [plant, vegetable, vegetative]
-play: [play, do]
+play: [play] # removed do
 pocket: [pocket, valley, fold, pit, depression]
 put: [put, give, send, throw, lose]
 reason: [reason, because, for]
 red: [red, sweet, happy]
-right: [right, beside, on behalf of]
-same: [same, like, equal, mean, imply, also]
+right: [right] # removed beside, on behalf of
+same: [same, ADP:like, equal, mean, imply] # removed also
 skin: [surface, covering, peel, shell, coating] # add original?
 sleep: [sleep, rest, oblivious]
 small: [small, little, less, slightly]
