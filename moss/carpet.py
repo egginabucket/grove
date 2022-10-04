@@ -2,7 +2,7 @@ import enum
 from moss.models import CarpetPhrase, Definition
 from string import ascii_lowercase
 
-WORD_CHARS = ascii_lowercase + '_\''
+WORD_CHARS = ascii_lowercase + '_\':'
 SHOW_BRACES = False
 SHOW_PARANTHESES = False
 
@@ -20,6 +20,7 @@ class Depth(enum.IntEnum):
 
 
 class AbstractPhrase:
+    phrase_str = ''
     def __init__(self,
         has_braces = False,
         tone_changes = '',
@@ -31,8 +32,10 @@ class AbstractPhrase:
         self.suffixes = suffixes
         self.multiplier = multiplier
     
+    def unwrapped_str(self) -> str:
+        return self.phrase_str
 
-    def wrap_str(self, phrase: str) -> str:
+    def __str__(self, phrase: str):
         start_char = ''
         end_char = ''
         if SHOW_BRACES and self.has_braces:
@@ -48,7 +51,13 @@ class AbstractPhrase:
             self.suffixes +
             ' ') * self.multiplier)[:-1]
     
-
+def def_to_model_kwargs(term: str) -> dict[str]:
+    kwargs = dict()
+    term = term.strip().upper()
+    if ':' in term:
+        kwargs['tag'], term = term.split(':')
+    kwargs['term'] = term.replace('_', ' ').lower()
+    return kwargs
 
 class AbstractParentPhrase(AbstractPhrase):
     children = []
@@ -58,6 +67,8 @@ class AbstractParentPhrase(AbstractPhrase):
         return
     
     def extend_children(self, depth=Depth.VOCAB):
+        if depth < Depth.RECURSIVE:
+            return
         for i, child in enumerate(self.children):
             if issubclass(type(child), type(self)):
                 if child.has_braces or len(self.children) == 1:
@@ -66,13 +77,9 @@ class AbstractParentPhrase(AbstractPhrase):
                     self.multiplier = 1
                     self.suffixes = ''
                 child.extend()
-        if len(self.children) == 1:
-            self.children = self.children[0].children
             
-            
-
-    def __str__(self):
-        return self.wrap_str(' '.join(map(str, self.children)))
+    def unwrapped_str(self):
+        return ' '.join(map(str, self.children)) or self.phrase_str
 
     """
     def steal_properties(self, phrase):
@@ -85,16 +92,15 @@ class AbstractParentPhrase(AbstractPhrase):
 class DefinitionPhrase(AbstractParentPhrase):
     def __init__(self, obj: Definition, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.obj = obj
+        self.def_obj = obj
     
     def extend(self, depth=Depth.VOCAB):
-        if depth < Depth.VOCAB or self.obj.core_synonym:
-            self.children = [self.obj.term]
-            return
-        if self.obj.definition.synonym:
-            self.children = [DefinitionPhrase(self.obj)]
-        elif self.obj.carpet_phrase:
-            self.children = [ModelPhrase(self.obj.carpet_phrase)]
+        if depth < Depth.VOCAB:
+            self.phrase_str = self.def_obj.term
+        elif self.def_obj.core_synonym:
+            self.phrase_str = self.def_obj.core_synonym.term
+        elif self.def_obj.carpet_phrase:
+            self.children = [ModelPhrase(self.def_obj.carpet_phrase)]
         self.extend_children(depth)
 
 
@@ -130,9 +136,12 @@ class StrPhrase(AbstractParentPhrase):
                 break
         
         if is_term:
-            self.children = [
-                DefinitionPhrase(Definition.objects.get(term=self.phrase.replace('_',  ' ')))
-            ]
+            if depth >= Depth.VOCAB:
+                self.children = [DefinitionPhrase(
+                    Definition.objects.get(**def_to_model_kwargs(self.phrase))
+                )]
+            else:
+                self.phrase_str = self.phrase
         else:
             child = StrPhrase()
             parentheses_depth = 0
@@ -175,4 +184,25 @@ class StrPhrase(AbstractParentPhrase):
                     multiplier_str += char
                 else:
                     child.suffixes += char
-        self.extend_children()
+        self.extend_children(depth)
+
+# recursive
+def save_definition(phrase: AbstractParentPhrase, parent=None, index=0) -> CarpetPhrase:
+    if hasattr(phrase, 'obj'):
+        return
+    obj = CarpetPhrase.objects.create(
+        parent = parent,
+        index = index,
+        has_braces = phrase.has_braces,
+        tone_changes = phrase.tone_changes,
+        suffixes = phrase.suffixes,
+        multiplier = phrase.multiplier,
+        definition_child = getattr(phrase, 'def_obj', None)
+    )
+
+    for i, child in enumerate(phrase.children):
+        phrase.children[i].obj = save_definition(child, obj, i)
+    
+    return obj
+
+

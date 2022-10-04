@@ -10,13 +10,17 @@ class NotesModel(m.Model):
 
 class CoreDefinition(NotesModel):
     term = m.CharField(max_length=254, unique=True)
-    phrase = m.TextField(verbose_data='definition in LilyPond', null=True)
+    phrase = m.TextField(verbose_name='definition in LilyPond', null=True)
 
 class Definition(NotesModel):
+    tag = m.CharField(choices=(())) # TODO
     term = m.CharField(max_length=254, unique=True)
     core_synonym = m.ForeignKey(CoreDefinition, related_name='synonyms', null=True, on_delete=m.CASCADE)
     carpet_phrase = m.ForeignKey('CarpetPhrase', null=True, on_delete=m.SET_NULL)
     source_file = m.CharField(null=True, max_length=254)
+
+    def simple_str(self) -> str:
+        return f"{self.tag}:{self.term.replace(' ', '_')}"
 
     def save(self, *args, **kwargs):
         if current_synonym := self.synonym:
@@ -32,7 +36,7 @@ class Definition(NotesModel):
 
 class CarpetPhrase(NotesModel):
     parent = m.ForeignKey('self', related_name='children', null=True, on_delete=m.CASCADE)
-    index = m.SmallIntegerField(default=1)
+    index = m.SmallIntegerField(default=0)
     has_braces = m.BooleanField(default=False)
     tone_changes = m.CharField(max_length=126)
     suffixes = m.CharField(max_length=126)

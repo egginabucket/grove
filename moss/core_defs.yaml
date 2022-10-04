@@ -1,125 +1,123 @@
-# MOST COMPREHENSIVE LIST ON MAR 2018 ARCHIVE
-# https://web.archive.org/web/20180318072810/http://www.thelanguageofmoss.com/forum
+# DICTIONARY AVAILABLE ON AUG 2009 ARCHIVE
+# https://web.archive.org/web/20090814224935/http://www.thelanguageofmoss.com/dictionary
 
-against: [against]
-air: [air, wind, breeze, gas, vapor]
-all: [all, every]
-and: [and, also, too]
-animal: [animal]
-ass: [ass, end, rear, butt] # varies across archives
-back: [back, backward, behind, before]
-bad: [bad, 'no']
-beautiful: [beautiful]
-believe: [believe, think]
-between: [between, medium, intermediate, vacillating, confused]
-big: [big, highly, large]
-blue: [blue, sad, sour, bitter]
-body: [body, trunk, hull]
-box: [box, cup, container, bowl, vase, tub]
-boy: [boy, man, male]
-break: [break, crack, canyon, cut, disparity, destroy, disrupt]
-bump: [hill, bump, lump, mountain]
-can: [can, possibility, ability]
-cause: [cause, force, make, compel]
-child: [child, descendant, offspring, baby]
-circle: [circle, ball, round, cycle, loop, surround, around, with respect to]
-close: [end, finish, close]
-cloth: [cloth, clothing, fabric, covering]
-come: [hello, arrive, come, come from] # typo on original site?
-cool: [cool, cold, agreeable, ok]
-count: [count, number, amount]
-crazy: [crazy, foolish, wild]
-dark: [dark, black]
-different: [different, difference, distance, interval]
-dirty: [dirty, dirt, earth, scum]
-drive: [drive, control]
-ear: [ear, hear, know about]
-eat: [eat, food, consume]
-eye: [eye, look, see]
-face: [front, face, facade, representative]
-feel: [feel, touch]
-fire: [fire, hot, angry]
-foot: [foot, base, least]
-forward: [forward, on behalf of, ahead]
-friend: [friend, nice]
-fruit: [fruit, reward, prize, award, goal, animal]
-get: [get, take, receive, catch, find]
-girl: [girl, woman, female]
-go: [go, move, goodbye, become]
-good: [good, 'yes']
-ground: [ground, floor, land, foundation]
-group: [group, set, class, team, collection]
-have: [have, own]
-head: [head, top, most]
-heart: [heart, middle, center]
-hit: [hit, strike, tap, poke]
-house: [house, home, building, system]
-inside: [inside, interior, within, member]
-it: [she, he, they, it, her, his, theirs, its] # WOKE WWOKEmodified to include gender-neutral pronouns
-knot: [knot, hard, dense, difficult]
-know: [know]
-leaf: [leaf, sheet, paper, flake, petal]
-left: [left, beside, with]
-life: [life, energy, power, fuel, vigor]
-light: [light, bright, white]
-like: [like, love]
-limb: [limb, stick]
-link: [link, connect, relate, copulate]
-machine: [machine, vehicle, car, console] # no word but "vehicle" was listed on 2009 archive
-make: [create, produce, accomplish] # origin missing
-mat: [support, chair, bed, table] # MISSING + add origin?
-maybe: [maybe, might, perhaps]
-me: [me, i, my] # how to handle caps??
-mistake: [mistake, screw up, incorrect, wrong, 'false']
-money: [money]
-mouth: [mouth, opening, hole]
-must: [must, have to, need, should]
-name: [name, word, term]
-nose: [nose, smell, intuit]
-only: [only, just, barely]
-open: [open, start, begin]
-or: [or]
-outside: [outside, beyond]
-over: [over, above, about]
-parent: [parent, ancestor, predecessor]
-path: [path, line, street, route, road]
-person: [person]
-picture: [picture, screen, diagram, represtation]
-place: [place, at]
-plant: [plant, vegetable, vegetative]
-play: [play, do]
-pocket: [pocket, valley, fold, pit, depression]
-put: [put, give, send, throw, lose]
-reason: [reason, because, for]
-red: [red, sweet, happy]
-right: [right, beside, on behalf of]
-same: [same, like, equal, mean, imply, also]
-skin: [surface, covering, peel, shell, coating] # add original?
-sleep: [sleep, rest, oblivious]
-small: [small, little, less, slightly]
-some: [some, part, portion]
-sound: [sound, ruckus, tumult]
-space: [space, room]
-stay: [stay, continue, keep on]
-story: [story, chain, thread, sequence, explanation, excuse]
-stuff: [stuff, soft, goo, sand, easy]
-talk: [talk, say, discuss, address]
-that: [there, away, the other]
-thing: [thing, exist]
-here: [here, this, the]
-time: [time]
-tip: [tip, finger, point, unit]
-tool: [equipment] # add original?
-'true': ['true', correct, honest]
-try: [try, attempt]
-type: [kind, type, sort, category] # MISSING WORD
-under: [under, below, supporting]
-use: [use, with]
-want: [want, desire, lack]
-water: [water, liquid]
-way: [way, method, means]
-what: [what]
-work: [work, do]
-write: [write, writing, article, book]
-yellow: [yellow, scared, salty]
-you: [you, your]
+against: f'1 f4 c''-.
+air: d''4 d1 c
+all: c''4-. c1
+and: c''4 b c
+animal: f'4 c'' e' c''
+ass: g''4 g1 c
+back: b''4 a a c
+bad: c''4-. c-. c-.
+beautiful: c'''4 g'' c1
+believe: g''4-. c'''1 c''
+between: g''4 c g c
+big: f'1 d'' c
+blue: g''1 c4 b a
+body: a''4-. b1 c
+box: d''4 b e c
+boy: g''4-. a''' c''1
+break: g''4 b c-.
+bump: b''4 g1 c
+can: f'4 c''1 c
+cause: g''4 f'1 c''
+child: g''4 f1 b c
+circle: b''1 c4 d c1
+close: c''4 g c1
+cloth: e''4 c d c1
+come: c''4 d-. c d-.
+cool: b''4 a1 c
+count: g''4-. f'4-.
+crazy: f'4-. c'' d1
+dark: g''4 d c1
+different: f'4-. g''1 c
+dirty: f'4 c c''4
+ear: g''4 c4-. f'1
+eat: f''1 c4 c1
+eye: f'1 e4 c''1
+face: f''4 g1 c
+feel: d''4 c-. c1
+fire: a''4 b c-. 
+foot: d''4 a''' c''1
+forward: b''4 a a c
+friend: g''1 b c
+fruit: e''4 d1 c
+furniture: #what
+get: f'4 b''1 c
+girl: g''4 d1 c
+go: c''4 b-. c b-.
+good: c''1 c c
+ground: c'''1 b c
+group: d''1 f'4 c''1
+hard: a'''1 g'' c
+have: b''1 d4 c1
+head: g'4 f1 c''
+heart: b''4 d1 b c
+hit: b''4-. b-. c1
+house: b''1 f' c''
+inside:  g''4 a''' c'' c
+it: c''4 c1
+kind: d''4-. b-. c1
+know: b''1 c c
+leaf: a''4 b1 c
+left: a''4 b b c
+life: g'4 a'' b c
+light: c''1 f'4 c''1
+like: c''4 d c1
+limb: d'4 f c''
+link: g''4 g c1
+make: b''4 a c-.
+maybe: f'4 c'' f' c''
+me: b''4 c1
+mistake: g''4 c''' c''1
+money: f'4 g'' c
+mouth: c''4 g1 c
+must: f'4 f c''1
+name: a''1 b4 c-.
+nose: c''1 d4 c1
+not: c''4-.
+only: c''4-. f'1
+open: c''4 f' c''1
+or: c''4 d c-.
+outside: b''4 b f' c''
+over: g'4 g f c''
+parent: f'1 g4 d'' c1
+path: d''4 d d c
+person: a''4 b c
+picture: g''4 f a'''1 c''
+place: c''4 d1 c
+plant: f'4 b'' c1
+play: g''1 a'''1 c1
+pocket: d''4 f'1 c''4
+put: d''4 e c
+reason: b''4 b1 c4-.
+red: g''1 c b4 c1
+right: e''4 d d c
+same: g''4 b1 c
+skin: d''4 b d c1
+sleep: d''1 c c
+small: c''4 b1 c4-.
+some: c''4-. g1
+sound: c'''4 g'' c1
+space: f'1 e c''
+stay: d''1 d c
+story: d''1 c4 b c1
+stuff: b''4 g c1
+talk: d''4 c1 c
+that: c''4-. g1 b
+thing: e''4 d f
+this: b''4-. g1 c
+time: f''4 e d c
+tip: d''4-. d-. c1
+'true': g''4 c1 c
+under: d''4 d g c
+use: d''4 b1 c
+vehicle:  # ANOTHER ONE
+want: b''4 d1 c
+water: f'4 d'' c1
+way: c'4 g1 c''
+what: e'4 a'''
+work: c'''1 g'' c
+write: d''1 e4 c1
+yellow: f'1 c'' g4 a'''1
+you: d''4 c1

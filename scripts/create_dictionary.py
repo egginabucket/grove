@@ -3,11 +3,12 @@ import yaml
 try: from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
+
+from moss import carpet, models
     
-from moss.models import CoreDefinition, Definition, CarpetPhrase
 
 CORE_DEFS_PATH = os.path.join('moss', 'core_defs.yaml')
-CORE_TERMS_PATH = os.path.join('moss', 'core_terms.yaml')
+CORE_SYNONYMS_PATH = os.path.join('moss', 'core_synonyms.yaml')
 CUSTOM_VOCAB_PATH = os.path.join('moss', 'custom_vocab')
 
 # TODO
@@ -16,27 +17,32 @@ def run():
     if not input("Rebuild dictionary from YAML files? y/N: ").strip().upper().startswith('Y'):
         return
     
-    Definition.objects.all().delete()
-    CarpetPhrase.objects.all().delete()
+    models.CoreDefinition.objects.all().delete()
+    models.Definition.objects.all().delete()
+    models.CarpetPhrase.objects.all().delete()
 
     with open(CORE_DEFS_PATH) as f:
         defs = yaml.load(f.read(), SafeLoader)
-        CoreDefinition.objects.bulk_create([CoreDefinition(
+        models.CoreDefinition.objects.bulk_create([models.CoreDefinition(
             term = key,
             phrase = val,
         ) for key, val in defs.items()])
 
-    with open(CORE_TERMS_PATH) as f:
+    with open(CORE_SYNONYMS_PATH) as f:
         defs = yaml.load(f.read(), SafeLoader)
         definitions = []
+        terms = []
         for key, val in defs.items():
-            definition, _ = CoreDefinition.objects.get_or_create(term=key)
-            definitions.extend([Definition(
+            for term in val:
+                if term in terms: print(term)
+                terms.append(term)
+            definition, _ = models.CoreDefinition.objects.get_or_create(term=key)
+            definitions.extend([models.Definition(
+                **carpet.def_to_model_kwargs(term),
                 core_synonym = definition,
-                term = term,
-                source_file = CORE_TERMS_PATH,
+                source_file = CORE_SYNONYMS_PATH,
             ) for term in val])
-        Definition.objects.bulk_create(definitions)
+        models.Definition.objects.bulk_create(definitions)
     
     for dir in os.listdir(CUSTOM_VOCAB_PATH):
         dir = os.path.join(CUSTOM_VOCAB_PATH, dir)
@@ -46,10 +52,12 @@ def run():
             if not (os.path.isfile(yaml_file) and yaml_file.endswith('.yaml')): continue
             with open(yaml_file) as f:
                 defs = yaml.load(f.read(), SafeLoader)
-                for key, val in defs.items():
-                    Definition.objects.create( 
-                        term = key,
-                        definition = TermDefinition.objects.create(is_core=False, phrase=val),
+                for term, val in defs.items():
+                    carpet_phrase = carpet.StrPhrase(val)
+                    carpet_phrase.extend(carpet.Depth.RECURSIVE)
+                    models.Definition.objects.create( 
+                         **carpet.def_to_model_kwargs(term),
+                        carpet_phrase = carpet.save_definition(carpet_phrase),
                         source_file = yaml_file,
                     )
     
