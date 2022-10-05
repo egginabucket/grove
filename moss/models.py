@@ -24,7 +24,7 @@ class PosTag(m.Model):
     def __save__(self, *args, **kwargs):
         self.abbr = self.abbr.upper()
         self.description = self.description.lower()
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.abbr
@@ -52,11 +52,13 @@ class Definition(NotesModel):
         return f"{self.tag}:{self.term.replace(' ', '_')}"
 
     def save(self, *args, **kwargs):
+        """
         if current_synonym := self.synonym:
             while current_synonym:
                 if current_synonym.term == self.synonym.term:
                     raise ValueError('Synonym leading to self')
                 current_synonym = self.synonym
+            """
         return super().save(*args, **kwargs)
 
     def __str__(self):

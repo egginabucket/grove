@@ -68,8 +68,9 @@ def def_to_model_kwargs(term: str, infer_pos_tag=False, pos_tag_as_obj=False) ->
     return kwargs
 
 class AbstractParentPhrase(AbstractPhrase):
-    children = []
-    contains_braces = False
+    def __init__(self, *args, **kwargs):
+        self.children = []
+        return super().__init__(*args, **kwargs)
 
     def extend(self, depth=Depth.VOCAB):
         return
@@ -78,7 +79,7 @@ class AbstractParentPhrase(AbstractPhrase):
         if depth < Depth.RECURSIVE:
             return
         for i, child in enumerate(self.children):
-            if issubclass(type(child), type(self)):
+            if issubclass(type(child), type(AbstractParentPhrase)):
                 if child.has_braces or len(self.children) == 1:
                     self.children[i].multiplier *= self.multiplier
                     self.children[i].suffixes += self.suffixes

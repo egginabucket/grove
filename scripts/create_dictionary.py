@@ -6,7 +6,7 @@ except ImportError:
 from django.conf import settings
 from moss import carpet, models
 
-CORE_DEFS_PATH = os.path.join(settings.DICT_PATH, 'core_defs.yaml')
+CORE_DEFS_PATH = os.path.join(settings.DICT_PATH, 'core.yaml')
 CORE_SYNONYMS_PATH = os.path.join(settings.DICT_PATH, 'core_synonyms.yaml')
 
 # TODO
