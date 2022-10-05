@@ -1,5 +1,5 @@
 bread: '{food} body'
-meat: '{food} come from animal'
+meat: '{food} come_from animal'
 juice: '{water} fruit'
 smoothie: '{cup} fruit'
 salad: '{collection} vegetable leaf leaf'

@@ -1,8 +1,3 @@
-now: 'time this'
-today: 'day this'
-yesterday: 'day this below'
-tomorrow: 'day this ahead'
-
 second: '{unit time} small*3'
 minute: '{unit time} small*2'
 hour: '{unit time} small'
@@ -14,6 +9,11 @@ decade: '{unit time} big*4'
 century: '{unit time} big*6'
 millenia: '{unit time} big*7'
 eon: '{unit time} big*8'
+
+now: 'time this'
+today: 'day this'
+yesterday: 'day this below'
+tomorrow: 'day this ahead'
 
 monday: '{that} day#1'
 tuesday: '{that} day#2'

@@ -21,6 +21,7 @@ class Depth(enum.IntEnum):
     SHALLOW = 1
     RECURSIVE = 2
     VOCAB = 3
+    EXTEND_VOCAB = 4
 
 
 class AbstractPhrase:
@@ -39,7 +40,7 @@ class AbstractPhrase:
     def unwrapped_str(self) -> str:
         return self.phrase_str
 
-    def __str__(self, phrase: str):
+    def __str__(self):
         start_char = ''
         end_char = ''
         if SHOW_BRACES and self.has_braces:
@@ -50,7 +51,7 @@ class AbstractPhrase:
             end_char = ')'
         return ((self.tone_changes +
             start_char +
-            phrase +
+            self.unwrapped_str() +
             end_char +
             self.suffixes +
             ' ') * self.multiplier)[:-1]
@@ -73,44 +74,38 @@ class AbstractParentPhrase(AbstractPhrase):
         return super().__init__(*args, **kwargs)
 
     def extend(self, depth=Depth.VOCAB):
-        return
-    
-    def extend_children(self, depth=Depth.VOCAB):
+        if depth < Depth.SHALLOW:
+            return
+        self.children = []
+        self._extend(depth)
         if depth < Depth.RECURSIVE:
             return
         for i, child in enumerate(self.children):
-            if issubclass(type(child), type(AbstractParentPhrase)):
+            if issubclass(type(child), AbstractPhrase):
                 if child.has_braces or len(self.children) == 1:
                     self.children[i].multiplier *= self.multiplier
                     self.children[i].suffixes += self.suffixes
                     self.multiplier = 1
                     self.suffixes = ''
-                child.extend(depth)
+                if depth >= Depth.RECURSIVE:
+                    child.extend(depth)
             
     def unwrapped_str(self):
         return ' '.join(map(str, self.children)) or self.phrase_str
 
-    """
-    def steal_properties(self, phrase):
-        self.has_braces = phrase.has_braces
-        self.tone_changes += phrase.tone_changes
-        self.suffixes = phrase.suffixes
-        self.multiplier = phrase.multiplier
-        """
 
 class DefinitionPhrase(AbstractParentPhrase):
     def __init__(self, obj: Definition, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.def_obj = obj
+        return super().__init__(*args, **kwargs)
     
-    def extend(self, depth=Depth.VOCAB):
-        if depth < Depth.VOCAB:
+    def _extend(self, depth=Depth.VOCAB):
+        if depth < Depth.EXTEND_VOCAB:
             self.phrase_str = self.def_obj.term
         elif self.def_obj.core_synonym:
             self.phrase_str = self.def_obj.core_synonym.term
         elif self.def_obj.carpet_phrase:
             self.children = [ModelPhrase(self.def_obj.carpet_phrase)]
-        self.extend_children(depth)
 
 
 class ModelPhrase(AbstractParentPhrase):
@@ -122,22 +117,19 @@ class ModelPhrase(AbstractParentPhrase):
         self.suffixes = obj.suffixes
         self.multiplier = obj.multiplier
         
-    def extend(self, depth=Depth.VOCAB):
+    def _extend(self, depth=Depth.VOCAB):
         if self.obj.definition_child:
             self.obj.children = [DefinitionPhrase(self.obj, depth)]
         for child in self.obj.get_children():
             self.children.append(ModelPhrase(child.carpet_child))
-        
-        self.extend_children(depth)
-    
 
 
 class StrPhrase(AbstractParentPhrase):
     def __init__(self, phrase='', *args, **kwargs):
         self.phrase_str = phrase.strip().lower()
-        super().__init__(*args, **kwargs)
+        return super().__init__(*args, **kwargs)
     
-    def extend(self, depth=Depth.VOCAB):
+    def _extend(self, depth=Depth.VOCAB):
         is_term = True
         for char in self.phrase_str:
             if char not in WORD_CHARS:
@@ -151,7 +143,6 @@ class StrPhrase(AbstractParentPhrase):
                 )]
         else:        
             child = StrPhrase()
-            print(self.phrase_str)
             parentheses_depth = 0
             braces_depth = 0
             is_multiplying = False
@@ -182,7 +173,6 @@ class StrPhrase(AbstractParentPhrase):
                 elif char.isspace():
                     if multiplier_str:
                         child.multiplier *= int(multiplier_str)
-                    # print(child.phrase_str)
                     if len(child.phrase_str) > 0:
                         self.children.append(child)
                     child = StrPhrase()
@@ -194,12 +184,12 @@ class StrPhrase(AbstractParentPhrase):
                     multiplier_str += char
                 else:
                     child.suffixes += char
-        self.extend_children(depth)
 
 # recursive
 def save_definition(phrase: AbstractParentPhrase, parent=None, index=0) -> CarpetPhrase:
     if hasattr(phrase, 'obj'):
         return
+
     obj = CarpetPhrase.objects.create(
         parent = parent,
         index = index,

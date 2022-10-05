@@ -53,7 +53,7 @@ def run():
                 for term, val in defs.items():
                     print(term)
                     carpet_phrase = carpet.StrPhrase(val)
-                    carpet_phrase.extend(carpet.Depth.RECURSIVE)
+                    carpet_phrase.extend()
                     models.Definition.objects.create( 
                          **carpet.def_to_model_kwargs(term, True, True),
                         carpet_phrase = carpet.save_definition(carpet_phrase),

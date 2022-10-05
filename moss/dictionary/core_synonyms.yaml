@@ -66,8 +66,8 @@ like: [VERB:like, love]
 limb: [limb, stick]
 link: [link, connect, relate, copulate]
 machine: [machine, vehicle, car, console] # no word but "vehicle" was listed on 2009 archive
-make: [create, produce, accomplish] # origin missing
-mat: [support, chair, bed, table] # MISSING + add origin?
+make: [create, produce, accomplish, make] # added origin
+mat: [support, chair, bed, table, mat] # MISSING + added origin?
 maybe: [maybe, might, perhaps]
 me: [me, i, my] # how to handle caps??
 mistake: [mistake, screw up, incorrect, wrong, 'false']
@@ -94,7 +94,7 @@ reason: [reason, because, for]
 red: [red, sweet, happy]
 right: [right] # removed beside, on behalf of
 same: [same, ADP:like, equal, mean, imply] # removed also
-skin: [surface, covering, peel, shell, coating] # add original?
+skin: [surface, covering, peel, shell, coating, skin] # added origin
 sleep: [sleep, rest, oblivious]
 small: [small, little, less, slightly]
 some: [some, part, portion]
@@ -104,12 +104,12 @@ stay: [stay, continue, keep on]
 story: [story, chain, thread, sequence, explanation, excuse]
 stuff: [stuff, soft, goo, sand, easy]
 talk: [talk, say, discuss, address]
-that: [there, away, the other]
+that: [there, away, the other, that] # added origin
 thing: [thing, exist]
 here: [here, this, the]
 time: [time]
-tip: [tip, finger, point, unit]
-tool: [equipment] # add original?
+tip: [tip, finger, NOUN:point, unit]
+tool: [equipment, tool] # added origin
 'true': ['true', correct, honest]
 try: [try, attempt]
 type: [kind, type, sort, category] # MISSING WORD
@@ -120,6 +120,6 @@ water: [water, liquid]
 way: [way, method, means]
 what: [what]
 work: [work, do]
-write: [write, writing, article, book]
+write: [write, NOUN:writing, article, book]
 yellow: [yellow, scared, salty]
 you: [you, your]
