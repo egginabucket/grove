@@ -22,7 +22,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'corsheaders',
-    'moss',
+    'common',
+    'maas',
+    'carpet',
     'translator',
 ]
 

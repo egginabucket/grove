@@ -44,16 +44,20 @@ def run():
     
     for dir in os.listdir(settings.DICT_PATH):
         dir = os.path.join(settings.DICT_PATH, dir)
+        yaml_files = []
         if not os.path.isdir(dir): continue
         for yaml_file in os.listdir(dir):
             yaml_file = os.path.join(dir, yaml_file)
-            if not (os.path.isfile(yaml_file) and yaml_file.endswith('.yaml')): continue
+            if os.path.isfile(yaml_file) and yaml_file.endswith('.yaml'):
+                yaml_files.append(yaml_file)
+        
+        for yaml_file in sorted(yaml_files):
             with open(yaml_file) as f:
                 defs = yaml.load(f.read(), SafeLoader)
                 for term, val in defs.items():
                     print(term)
                     carpet_phrase = carpet.StrPhrase(val)
-                    carpet_phrase.extend()
+                    carpet_phrase.extend(carpet.Depth.VOCAB, False)
                     models.Definition.objects.create( 
                          **carpet.def_to_model_kwargs(term, True, True),
                         carpet_phrase = carpet.save_definition(carpet_phrase),

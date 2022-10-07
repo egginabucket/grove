@@ -76,6 +76,7 @@ mouth: [mouth, opening, hole]
 must: [must, have to, need, should]
 name: [name, word, term]
 nose: [nose, smell, intuit]
+not: [not] # added
 only: [only, just, barely]
 open: [open, start, begin]
 or: [or]

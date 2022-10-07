@@ -1,12 +1,12 @@
 # Grove
 
-A backend for translating English and other languages into the musical language Moss. Currently in early development.
+A backend for translating English and other languages into the musical language Maas. Currently in early development.
 
 ---
 
-## Moss
+## Maas
 
-Moss is a constructed musical language, like Solresol. Created by Jackson Moore of the &quot;Bruce High Quality Foundation University&quot;, what little information of it that remains online is preserved on the Wayback Machine.
+Maas (formerly known as Moss) is a constructed musical language, like Solresol. Created by Jackson Moore of the &quot;Bruce High Quality Foundation University&quot;, what little information of it that remains online is preserved on the Wayback Machine.
 
 - [thelanguageofmoss.com Mar 2018 archive](https://web.archive.org/web/20180311194718/http://www.thelanguageofmoss.com/)
 - [thelanguageofmoss.com Aug 2009 archive](https://web.archive.org/web/20090813110752/http://www.thelanguageofmoss.com/) - includes a mostly complete dictionary
@@ -16,11 +16,13 @@ Moss is a constructed musical language, like Solresol. Created by Jackson Moore 
 
 All libraries and programs used are FOSS (free open-source software), with the exception of APIs for Google Translate and the Merriam-Webster dictionary.
 
-### Abjad
+
+### ~~Abjad~~
 
 - [Docs](https://abjad.github.io/)
 - [PyPI](https://pypi.org/project/abjad/)
 - [Source](https://github.com/Abjad/abjad)
+
 
 ### Celery
 
@@ -61,11 +63,23 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [Docs](https://mido.readthedocs.io/en/latest/)
 - [Source](https://github.com/mido/mido/)
 
-### Natural Language Toolkit (NLTK)
+### mingus
+
+- [Homepage](http://bspaans.github.io/python-mingus/)
+- [PyPI](https://pypi.org/project/mingus/)
+- [Source](https://github.com/bspaans/python-mingus)
+
+### ~~Natural Language Toolkit (NLTK)~~
 
 - [Official Site](https://www.nltk.org/)
-- [PyPI]()
+- [PyPI](https://pypi.org/project/nltk/)
 - [Source](https://github.com/nltk/nltk)
+
+### ~~quickly~~
+
+- [Official Site](https://quick-ly.info/)
+- [PyPI](https://pypi.org/project/quickly/)
+- [Source](https://github.com/frescobaldi/quickly))
 
 ### Redis
 
