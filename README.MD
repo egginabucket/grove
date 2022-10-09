@@ -63,7 +63,13 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [Docs](https://mido.readthedocs.io/en/latest/)
 - [Source](https://github.com/mido/mido/)
 
-### mingus
+### music21
+- [Homepage](https://web.mit.edu/music21/)
+- [Docs](https://web.mit.edu/music21/doc/index.html)
+- [PyPI](https://pypi.org/project/music21/)
+- [Source](https://github.com/cuthbertLab/music21/)
+
+### ~~mingus~~
 
 - [Homepage](http://bspaans.github.io/python-mingus/)
 - [PyPI](https://pypi.org/project/mingus/)

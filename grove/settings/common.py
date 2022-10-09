@@ -1,6 +1,10 @@
 import os
 from pathlib import Path
 
+try: from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -20,9 +24,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_extensions',
     'corsheaders',
-    'common',
     'maas',
     'carpet',
     'translator',
@@ -103,5 +105,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-DICT_PATH = os.path.join('moss', 'dictionary')
 SPACY_PACKAGE = 'en_core_web_sm'
+YAML_LOADER = SafeLoader
+DICTIONARY_PATHS = [
+    os.path.join('carpet', 'dictionary')
+]

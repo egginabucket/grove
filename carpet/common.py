@@ -1,7 +1,12 @@
 import enum
-from typing import Generator
+from typing import Generator, Optional
 from string import ascii_letters
+import spacy
+from django.db import models
+from django.conf import settings
+from maas.models import Lexeme
 
+nlp = spacy.load(settings.SPACY_PACKAGE)
 
 TERM_CHARS = ascii_letters + ':_\''
 MULTIPLIER_CHAR = '*'
@@ -16,9 +21,25 @@ class Depth(enum.IntEnum):
     VOCAB = 3
     LEXICAL = 4
 
+class PitchChange(models.TextChoices):
+    UP = '+', 'up'
+    DOWN = '-', 'down'
+    LAST = '@', 'last'
+
+
+class Suffix(models.TextChoices):
+    QUESTION = '?', 'question'
+    NOT = '!', 'not'
+
 
 class AbstractPhrase:
-    phrase_str = ''
+    has_braces = False
+    pitch_change = None
+    multiplier = 1
+    count = None
+    suffix = None
+    lexeme: Optional[Lexeme] = None
+
     def extend(self, depth: Depth, movemodifiers: bool):
         if depth < Depth.SHALLOW:
             return
@@ -29,7 +50,7 @@ class AbstractPhrase:
             return
         if depth < Depth.RECURSIVE:
             return
-        for i, child in enumerate(self.children):
+        for child in self.children:
             if issubclass(type(child), AbstractPhrase):
                 if depth >= Depth.RECURSIVE:
                     child.extend(depth, movemodifiers)
@@ -51,11 +72,7 @@ class AbstractPhrase:
                         self.count = None
                     self.multiplier = 1
     
-    def get_children(self) -> Generator['AbstractPhrase']:
-        yield
-    
-    def unwrapped_str(self) -> str:
-        return ' '.join(map(str, self.children)) or self.phrase_str
+    def get_children(self) -> Generator['AbstractPhrase', None, None]:  pass
     
     def __str__(self):
         start_str = ''
@@ -68,7 +85,7 @@ class AbstractPhrase:
             end_str += ')'
         if self.count:
             end_str += '#' + str(self.count)
-        return ((self.tone_change or '' +
+        return ((self.pitch_change or '' +
             start_str +
             self.unwrapped_str() +
             end_str +

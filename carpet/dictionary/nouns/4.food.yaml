@@ -4,5 +4,3 @@ juice: '{water} fruit'
 smoothie: '{cup} fruit'
 salad: '{collection} vegetable leaf leaf'
 sandwich: 'food between bread'
-
-'me smoothie#2'

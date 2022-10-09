@@ -1,19 +1,12 @@
-from typing import Optional
-from maas.models import Lexeme
-from carpet import models
-from carpet.common import *
+from typing import Generator
+from carpet.common import TERM_CHARS, MULTIPLIER_CHAR, COUNT_CHAR, Suffix, PitchChange, AbstractPhrase
+from carpet.models import Term, parse_to_term_kwargs
 
 class StrPhrase(AbstractPhrase):
-    has_braces = False
-    tone_change = None
-    suffix = ''
-    multiplier = 1
-    count: Optional[int] = None
-
-    def __init__(self, phrase='', *args, **kwargs):
+    def __init__(self, phrase=''):
         self.phrase_str = phrase.strip()
     
-    def get_children(self) -> Generator[AbstractPhrase]:   
+    def get_children(self) -> Generator[AbstractPhrase, None, None]:   
         child = StrPhrase()
         parentheses_depth = 0
         braces_depth = 0
@@ -25,7 +18,7 @@ class StrPhrase(AbstractPhrase):
         is_term = True
 
         for i, char in enumerate(self.phrase_str + ' '):
-            if char not in TERM_CHARS:
+            if char not in TERM_CHARS and i < len(self.phrase_str):
                 is_term = False
             if char == '(':
                 if parentheses_depth: child.phrase_str += char
@@ -49,10 +42,10 @@ class StrPhrase(AbstractPhrase):
             elif parentheses_depth or braces_depth:
                 child.phrase_str += char
             
-            elif not child.phrase_str and char in models.Phrase.ToneChange.values:
-                if child.tone_change:
+            elif not child.phrase_str and char in PitchChange.values:
+                if child.pitch_change:
                     error_str = 'multiple tone changes'
-                child.tone_change = char
+                child.pitch_change = char
             elif char in TERM_CHARS:
                 child.phrase_str += char
             elif char == MULTIPLIER_CHAR:
@@ -63,13 +56,18 @@ class StrPhrase(AbstractPhrase):
                 is_count = True
             elif is_count and char.isdigit():
                 count_str += char
-            elif char in models.Phrase.Suffix.values:
+            elif char in Suffix.values:
                 if child.suffix:
                     error_str = 'multiple suffixes (use parentheses)'
                 child.suffix = char
             elif char.isspace():
                 if is_term:
-                    self.children.append()
+                    try:
+                        yield Term.objects.get(
+                            **parse_to_term_kwargs(child.phrase_str, True, False) # TODO
+                        ).phrase
+                    except Term.DoesNotExist:
+                        raise ValueError(f"undefined term '{child.phrase_str}'")
                 else:
                     if multiplier_str:
                         child.multiplier *= int(multiplier_str)
@@ -95,25 +93,3 @@ class StrPhrase(AbstractPhrase):
             raise ValueError(f"unclosed parentheses in '{self.phrase_str}'")
         if braces_depth:
             raise ValueError(f"unclosed braces in '{self.phrase_str}'")
-
-
-# recursive, lexemes not supported
-def save_definition(phrase: AbstractPhrase, parent=None, index=0) -> models.Phrase:
-    if isinstance(phrase, models.Phrase):
-        return
-
-    obj = models.Phrase.objects.create(
-        parent = parent,
-        index = index,
-        has_braces = phrase.has_braces,
-        tone_change = phrase.tone_change,
-        suffix = phrase.suffix,
-        multiplier = phrase.multiplier,
-        count = phrase.count,
-    )
-
-    for i, child in enumerate(phrase.children):
-        phrase.children[i].obj = save_definition(child, obj, i)
-    
-    return obj
-

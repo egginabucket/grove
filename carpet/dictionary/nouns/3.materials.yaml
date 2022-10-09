@@ -1,4 +1,4 @@
-stone: '{@thing} ground'
+stone: '{thing} ground'
 dirt: '{stuff} ground dirty'
 wood: '{stuff} tree'
 ice: '{stuff} water cool*2'
