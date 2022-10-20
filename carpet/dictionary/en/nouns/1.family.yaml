@@ -1,0 +1,6 @@
+NOUN:sibling: 'parent child'
+sister: '{NOUN:sibling} female'
+brother: '{NOUN:sibling} male'
+cousin: 'parent NOUN:sibling child'
+aunt: 'parent sister'
+uncle: 'parent brother'

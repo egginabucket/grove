@@ -42,7 +42,7 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [PyPI](https://pypi.org/project/gunicorn/)
 - [Source](https://github.com/benoitc/gunicorn)
 
-### LilyPond
+### ~~LilyPond~~
 
 - [Homepage](https://lilypond.org/)
 - [Source](https://git.savannah.gnu.org/gitweb/?p=lilypond.git)
@@ -53,12 +53,12 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [Knowledge Base](https://mariadb.com/kb/en/)
 - [Source](https://github.com/MariaDB/server)
 
-### MIDI.js
+### ~~MIDI.js~~
 
 - [Homepage](https://galactic.ink/midi-js/)
 - [Source](https://github.com/mudcube/MIDI.js)
 
-### Mido
+### ~~Mido~~
 
 - [Docs](https://mido.readthedocs.io/en/latest/)
 - [Source](https://github.com/mido/mido/)
@@ -81,6 +81,12 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [PyPI](https://pypi.org/project/nltk/)
 - [Source](https://github.com/nltk/nltk)
 
+### pako
+
+- [Official Site](https://nodeca.github.io/pako/)
+- [NPM](https://www.npmjs.com/package/pako)
+- [Source](https://github.com/nodeca/pako)
+
 ### ~~quickly~~
 
 - [Official Site](https://quick-ly.info/)
@@ -90,6 +96,12 @@ All libraries and programs used are FOSS (free open-source software), with the e
 ### Redis
 
 - [Official Site](https://redis.io/)
+
+### Spacy
+
+- [Official Site](https://spacy.io/)
+- [PyPI](https://pypi.org/project/spacy/)
+- [Source](https://github.com/explosion/spaCy)
 
 ### Uvicorn
 

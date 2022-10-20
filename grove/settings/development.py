@@ -9,3 +9,5 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+M21_OUT_DIR = BASE_DIR / 'dev-m21-out'

@@ -1,13 +1,79 @@
-from typing import Generator
-from carpet.common import TERM_CHARS, MULTIPLIER_CHAR, COUNT_CHAR, Suffix, PitchChange, AbstractPhrase
-from carpet.models import Term, parse_to_term_kwargs
+from typing import Generator, Optional, Any
+
+from maas.models import Lexeme
+from language.models import SpacyLanguageModel
+from carpet.base import (
+    SHOW_BRACES, SHOW_PARANTHESES,
+    MULTIPLIER_CHAR, COUNT_CHAR,
+    Depth, Suffix, PitchChange,
+)
+from carpet.base import AbstractPhrase
+from carpet.models import Phrase, Term, apply_model_phrase, parse_to_term_kwargs
+
+
+
+
+"""
+class _ModelPhrase(AbstractPhrase):
+    true_attrs = ('phrase_obj', 'lang', 'has_braces')
+
+    def __init__(self, lang: SpacyLanguageModel, phrase: Phrase):
+        self = phrase
+        self.phrase_obj = phrase
+        self.lang = lang
+"""
+
+"""
+class ModelPhrase(AbstractPhrase, Phrase):
+    def __init__(self, lang: SpacyLanguageModel, phrase: Phrase):
+        self = phrase
+        self.__class__ = ModelPhrase
+        self.lang = lang
+        self.phrase_obj = phrase"""
+    
+"""
+    @property
+    def phrase_obj(self):
+        phrase = self
+        phrase.__class__ = Phrase
+        #phrase.Meta.abstract = False
+        return phrase
+    """
+
+"""
+    def __getattr__(self, __name: str) -> Any:
+        if __name in super().true_attrs:
+            return getattr(self, __name)
+        return getattr(self.phrase_obj, __name)
+        
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        if __name in super().true_attrs:
+            return setattr(self, __name, __value)
+        return setattr(self.phrase_obj, __name, __value)
+    """
+""" def get_children(self) -> Generator['Phrase', None, None]:
+        for child_rel in self.phrase_obj.child_rels.order_by('index'):
+            child = ModelPhrase(self.lang, child_rel.child)
+            child.has_braces = child_rel.has_braces
+            yield child
+    
+    def unwrapped_str(self) -> str:
+        return str(self.lexeme) or ' '.join(map(str, self.get_children()))
+    
+    class Meta:
+        abstract = True""" 
+   
+
 
 class StrPhrase(AbstractPhrase):
-    def __init__(self, phrase=''):
+    lang_m: SpacyLanguageModel
+    def __init__(self, lang_m: SpacyLanguageModel, phrase=''):
+        self.lang_m = lang_m
+        self.lang = lang_m.language
         self.phrase_str = phrase.strip()
-    
+        
     def get_children(self) -> Generator[AbstractPhrase, None, None]:   
-        child = StrPhrase()
+        child = StrPhrase(self.lang_m)
         parentheses_depth = 0
         braces_depth = 0
         is_multiplier = False
@@ -18,8 +84,9 @@ class StrPhrase(AbstractPhrase):
         is_term = True
 
         for i, char in enumerate(self.phrase_str + ' '):
-            if char not in TERM_CHARS and i < len(self.phrase_str):
-                is_term = False
+            #if char not in TERM_CHARS and i < len(self.phrase_str):
+            #    is_term = False
+            maintain_term = False
             if char == '(':
                 if parentheses_depth: child.phrase_str += char
                 parentheses_depth += 1
@@ -46,8 +113,6 @@ class StrPhrase(AbstractPhrase):
                 if child.pitch_change:
                     error_str = 'multiple tone changes'
                 child.pitch_change = char
-            elif char in TERM_CHARS:
-                child.phrase_str += char
             elif char == MULTIPLIER_CHAR:
                 is_multiplier = True
             elif is_multiplier and char.isdigit():
@@ -63,9 +128,9 @@ class StrPhrase(AbstractPhrase):
             elif char.isspace():
                 if is_term:
                     try:
-                        yield Term.objects.get(
-                            **parse_to_term_kwargs(child.phrase_str, True, False) # TODO
-                        ).phrase
+                        yield apply_model_phrase(self.lang, Term.objects.get(
+                            **parse_to_term_kwargs(self.lang_m, child.phrase_str, True, False) # TODO
+                        ).phrase)
                     except Term.DoesNotExist:
                         raise ValueError(f"undefined term '{child.phrase_str}'")
                 else:
@@ -77,7 +142,7 @@ class StrPhrase(AbstractPhrase):
                         child.count *= int(count_str)
                     if len(child.phrase_str) > 0:
                         yield child
-                child = StrPhrase()
+                child = StrPhrase(self.lang_m)
                 parentheses_depth = 0
                 braces_depth = 0
                 is_multiplier = False
@@ -86,7 +151,11 @@ class StrPhrase(AbstractPhrase):
                 count_str = ''
                 is_term = True
             else:
-                error_str = 'unparsable token'
+                child.phrase_str += char
+                maintain_term = True
+                # error_str = 'unparsable token'
+            if not maintain_term:
+                is_term = False
             if error_str:
                 raise ValueError(f"{error_str} at '{self.phrase_str}'[{i}]")
         if parentheses_depth:

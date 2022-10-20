@@ -1,9 +1,13 @@
 import os
 from pathlib import Path
+from music21.key import Key
 
 try: from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
+
+from dotenv import load_dotenv
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -13,11 +17,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ()
 
 # Application definition
 
-INSTALLED_APPS = [
+INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -25,12 +29,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'language',
     'maas',
     'carpet',
     'translator',
-]
+)
 
-MIDDLEWARE = [
+MIDDLEWARE = (
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -39,25 +44,25 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
+)
 
 ROOT_URLCONF = 'grove.urls'
 
-TEMPLATES = [
+TEMPLATES = (
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
-            'context_processors': [
+            'context_processors': (
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-            ],
+            ),
         },
     },
-]
+)
 
 WSGI_APPLICATION = 'grove.wsgi.application'
 
@@ -67,7 +72,7 @@ WSGI_APPLICATION = 'grove.wsgi.application'
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = [
+AUTH_PASSWORD_VALIDATORS = (
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
@@ -80,7 +85,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
-]
+)
 
 
 # Internationalization
@@ -105,8 +110,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SPACY_PACKAGE = 'en_core_web_sm'
 YAML_LOADER = SafeLoader
-DICTIONARY_PATHS = [
-    os.path.join('carpet', 'dictionary')
-]
+NATIVE_LANGUAGE_CODE = 'en'
+SPACY_PACKAGES = ('en_core_web_sm', )
+DICTIONARIES = (
+    {
+        'lang': 'en_core_web_sm',
+        'path': BASE_DIR / 'carpet' / 'dictionary' / 'en',
+    },
+)
+DEFAULT_KEY = Key('B')

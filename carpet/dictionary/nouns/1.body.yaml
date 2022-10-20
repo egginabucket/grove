@@ -1,4 +1,0 @@
-torso: '{head} center'
-tooth: '{point} mouth'
-leg: '{rear} limb'
-arm: '{top} limb'
