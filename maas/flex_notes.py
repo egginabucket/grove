@@ -23,10 +23,12 @@ def key_interval(key: Key, note: Note, interval: int) -> Pitch:
     return Pitch(notes_in_key[total_interval % 7], octave=math.floor(total_interval / 7))
 """
 
+
 class Tone(models.TextChoices):
     NUCLEUS = 'N', 'nucleus'
     UPPER_SAT = 'U', 'upper satellite'
     LOWER_SAT = 'L', 'lower satellite'
+
 
 class DurationMode(models.TextChoices):
     WHOLE = '1', '1/1 note'
@@ -39,7 +41,7 @@ class AbstractFlexNote:
     duration_mode = DurationMode.QUARTER
     degree = 0
     is_ghosted = False
-        
+
     def parse(self, raw_str: str):
         if raw_str.startswith(GHOSTED_CHAR):
             self.is_ghosted = True
@@ -48,17 +50,19 @@ class AbstractFlexNote:
         self.tone = raw_str[1]
         if len(raw_str) > 2:
             self.degree = int(raw_str[2:])
-    
+
     def __str__(self):
         self_str = self.duration_mode + str(self.tone)
         if self.is_ghosted:
             self_str = GHOSTED_CHAR + self_str
         if self.degree:
-            if self.degree > 0: self_str += '+'
-            else: self_str += '-'
+            if self.degree > 0:
+                self_str += '+'
+            else:
+                self_str += '-'
             self_str += str(abs(self.degree))
         return self_str
-    
+
     def get_pitch(self, key: Key, nucleus_degree: int) -> Pitch:
         degree = nucleus_degree
         if self.tone == Tone.UPPER_SAT:
@@ -69,7 +73,7 @@ class AbstractFlexNote:
         pitch = key.pitchFromDegree(degree+1)
         pitch.octave += math.floor(degree / 7)
         return pitch
-    
+
     def get_note(self, key: Key, nucleus_degree: degree) -> Note:
         pitch = self.get_pitch(key, nucleus_degree)
         note = Note(pitch)
@@ -83,5 +87,3 @@ class AbstractFlexNote:
         if self.is_ghosted:
             pass
         return note
-    
-

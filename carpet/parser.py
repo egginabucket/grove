@@ -8,7 +8,7 @@ from carpet.base import (
     Depth, Suffix, PitchChange,
 )
 from carpet.base import AbstractPhrase
-from carpet.models import Phrase, Term, apply_model_phrase, parse_to_term_kwargs
+from carpet.models import Phrase, Term, apply_model_phrase, parse_term_kwargs
 
 
 
@@ -129,7 +129,7 @@ class StrPhrase(AbstractPhrase):
                 if is_term:
                     try:
                         yield apply_model_phrase(self.lang, Term.objects.get(
-                            **parse_to_term_kwargs(self.lang_m, child.phrase_str, True, False) # TODO
+                            **parse_term_kwargs(self.lang_m, child.phrase_str, True, False) # TODO
                         ).phrase)
                     except Term.DoesNotExist:
                         raise ValueError(f"undefined term '{child.phrase_str}'")

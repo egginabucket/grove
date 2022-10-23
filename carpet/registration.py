@@ -4,7 +4,7 @@ from django.db.utils import IntegrityError
 from django.conf import settings
 from language.models import SpacyLanguageModel
 from carpet.base import AbstractPhrase, Depth
-from carpet.models import Phrase, PhraseComposition, Term, apply_model_phrase, parse_to_term_kwargs
+from carpet.models import Phrase, PhraseComposition, Term, apply_model_phrase, parse_term_kwargs
 from carpet.parser import StrPhrase
 from maas.models import LexemeTranslation
 
@@ -49,7 +49,7 @@ def register_dictionary(path: str, lang: SpacyLanguageModel):
                             term = Term(
                                 phrase = phrase,
                                 source_file = full_path,
-                                **parse_to_term_kwargs(lang, tachy, True, True)
+                                **parse_term_kwargs(lang, tachy, True, True)
                             )
                             # terms.append(term)
                             try:
@@ -65,7 +65,7 @@ def register_dictionary(path: str, lang: SpacyLanguageModel):
                         term = Term(
                             phrase = register_phrase(carpet_phrase),
                             source_file = full_path,
-                            **parse_to_term_kwargs(lang, tachy, True, True),
+                            **parse_term_kwargs(lang, tachy, True, True),
                         )
                         try:
                             term.save()

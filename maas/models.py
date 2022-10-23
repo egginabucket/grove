@@ -1,11 +1,12 @@
 from typing import Generator
 from django.db import models
-from language.models import Language
+from language.models import Lang
 from maas.flex_notes import AbstractFlexNote, Tone, DurationMode
 
 
 class FlexNote(models.Model, AbstractFlexNote):
-    duration_mode = models.CharField(choices=DurationMode.choices, max_length=1)
+    duration_mode = models.CharField(
+        choices=DurationMode.choices, max_length=1)
     tone = models.CharField(choices=Tone.choices, max_length=1)
     degree = models.SmallIntegerField(default=0)
     is_ghosted = models.BooleanField(default=False)
@@ -15,7 +16,7 @@ class FlexNote(models.Model, AbstractFlexNote):
 
 
 class Lexeme(models.Model):
-    notes = models.TextField(null=True) # notes notes, not musical notes!!
+    comment = models.TextField(null=True)
 
     def parse_flex_notes(self, raw_str: str) -> Generator['LexemeFlexNote', None, None]:
         for i, flex_note_str in enumerate(raw_str.strip().split()):
@@ -25,29 +26,32 @@ class Lexeme(models.Model):
 
     def get_flex_notes(self) -> models.Manager['LexemeFlexNote']:
         return self.flex_notes.order_by('index')
-    
-    def translation(self, language: Language) -> str:
-        return self.translations.get(language=language).term
+
+    def translation(self, lang: Lang) -> str:
+        return self.translations.get(lang=lang).term
 
     def __str__(self):
-        return self.translation(Language.native())
+        return self.translation(Lang.native())
 
 
 class LexemeTranslation(models.Model):
-    lexeme = models.ForeignKey(Lexeme, related_name='translations', on_delete=models.CASCADE)
+    lexeme = models.ForeignKey(
+        Lexeme, related_name='translations', on_delete=models.CASCADE)
     term = models.CharField(max_length=254)
-    language = models.ForeignKey(Language, on_delete=models.PROTECT)
+    lang = models.ForeignKey(Lang, on_delete=models.PROTECT)
 
     def __str__(self):
         return self.term
-    
+
     class Meta:
-        unique_together = ('lexeme', 'language')
+        unique_together = ('lexeme', 'lang')
 
 
 class LexemeFlexNote(FlexNote):
-    flex_note = models.OneToOneField(FlexNote, parent_link=True, on_delete=models.CASCADE)
-    lexeme = models.ForeignKey(Lexeme, related_name='flex_notes', on_delete=models.CASCADE)
+    flex_note = models.OneToOneField(
+        FlexNote, parent_link=True, on_delete=models.CASCADE)
+    lexeme = models.ForeignKey(
+        Lexeme, related_name='flex_notes', on_delete=models.CASCADE)
     index = models.PositiveSmallIntegerField()
 
     def __str__(self):

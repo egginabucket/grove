@@ -1,11 +1,11 @@
-open class:
+O:
     ADJ: adjective
     ADV: adverb
     INTJ: interjection
     NOUN: noun
     PROPN: proper noun
     VERB: verb
-closed class:
+C:
     ADP: adposition
     AUX: auxiliary
     CCONJ: coordinating conjunction
@@ -14,7 +14,7 @@ closed class:
     PART: particle
     PRON: pronoun
     SCONJ:  subordinating conjunction
-other:
+X:
     PUNCT: punctuation
     SYM: symbol
     X: other

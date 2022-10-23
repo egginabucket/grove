@@ -2,13 +2,14 @@
 celery==5.2.7
 dj-database-url==1.0.0
 Django==4.1.1
-django-cors-headers
+djangorestframework==3.14.0
+django-cors-headers==3.13.0
 #django-extensions==3.2.1
 google-cloud-translate==2.0.1
 gunicorn==20.1.0
 #mingus==0.6.1
 music21==8.1.0
-#nltk==3.7
+nltk==3.7
 parce==0.32.0
 python-dotenv==0.21.0
 PyYAML==6.0

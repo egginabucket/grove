@@ -7,7 +7,7 @@ from music21.metadata import Metadata
 from music21.tempo import MetronomeMark
 from spacy.tokens import Token
 from django.conf import settings
-from language.models import Language, SpacyLanguageModel
+from language.models import Lang, SpacyLangModel
 from carpet.base import AbstractPhrase, Depth, Suffix
 from carpet.models import apply_model_phrase, Term
 from carpet.m21 import DOWN_DEGREE, UP_DEGREE, phrase_to_m21
@@ -39,9 +39,9 @@ class DepArrangement:
     pass # TODO
 
 
-def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lang: Optional[Language] = None) -> Tuple[Stream, int]:
+def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lang: Optional[Lang] = None) -> Tuple[Stream, int]:
     if not lang:
-        lang = Language.objects.get(code=token.lang_)
+        lang = Lang.objects.get(code=token.lang_)
     stream = Score()
     phrase = AbstractPhrase()
     phrase.extend(Depth.LEXICAL, False)
@@ -57,7 +57,7 @@ def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lan
         try:
             term = Term.objects.get(
                 language = lang,
-                term = token.lemma_,
+                lemma = token.lemma_,
                 pos_tag__abbr = token.pos_
             )
         except Term.DoesNotExist:
@@ -102,7 +102,7 @@ def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lan
     return stream.flatten(), nucleus_deg
 
 
-def str_to_score(lang_m: SpacyLanguageModel, text: str, add_lyrics=True, key=settings.DEFAULT_KEY, tempo='presto') -> Stream:
+def str_to_score(lang_m: SpacyLangModel, text: str, add_lyrics=True, key=settings.DEFAULT_KEY, tempo='presto') -> Stream:
     lemmatizer = lang_m.nlp.get_pipe('lemmatizer')
     lemmatizer.labels
     doc = lang_m.nlp(text)

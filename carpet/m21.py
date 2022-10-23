@@ -17,9 +17,9 @@ from carpet.parser import StrPhrase
 UP_DEGREE = 4
 DOWN_DEGREE = -2
 
-count_phrase = Term.objects.get(term='count', language=Language.native()).phrase
-not_phrase = Term.objects.get(term='not', language=Language.native()).phrase
-what_phrase = Term.objects.get(term='what', language=Language.native()).phrase
+count_phrase = Term.objects.get(lemma='count', language=Language.native()).phrase
+not_phrase = Term.objects.get(lemma='not', language=Language.native()).phrase
+what_phrase = Term.objects.get(lemma='what', language=Language.native()).phrase
 count_phrase.extend(Depth.LEXICAL, True)
 not_phrase.extend(Depth.LEXICAL, True)
 what_phrase.extend(Depth.LEXICAL, True)
