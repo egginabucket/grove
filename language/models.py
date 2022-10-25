@@ -1,57 +1,28 @@
 from functools import cached_property
-from typing import Any, Sequence, Generator
+from logging.config import valid_ident
+from typing import Any, Optional, Sequence, Generator, Union, Type
 import requests
 import spacy
 from spacy.language import Language
 from spacy.cli.download import download_model
 from spacy.cli._util import WHEEL_SUFFIX, SDIST_SUFFIX
-from django.conf import settings
 from django.db import models
-
-
-def parse_google_lang_kwargs(tachy: str) -> dict[str]:
-    kwargs = dict()
-    tokens = tachy.split('/')
-    lang = tachy[0]
-    if len(lang) == 2:
-        tokens['iso_639_1'] = lang
-    elif len(lang) == 3:
-        tokens['iso_639_2t'] = lang
-    else:
-        raise ValueError(f"invalid ISO code in {tachy}")
-    if len(tokens) > 1:
-        kwargs['country_code'] = tokens[1]
-
-
-"""
-class Lang(models.Model):
-    name = models.CharField(
-        verbose_name='translated display name', max_length=126)
-
-    @staticmethod
-    def native() -> 'Lang':
-        return Lang.objects.get(code=settings.NATIVE_LANGUAGE_CODE)
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        unique_together = ('code_639_2t', 'country_code')
-
-class LangIsoDefinition(models.Model):
-    language = models.ForeignKey(
-        Lang, related_name='iso_definitions', on_delete=models.CASCADE)
-    code = models.CharField(
-        verbose_name='ISO 639-1 code', max_length=2, null=True)
-    code_2t = models.CharField(verboise_name='ISO 639-2/t code', max_length=3)
-    country_code = models.CharField(
-        verbose_name='ideally ISO 3166-1 alpha 2 code', max_length=12)
-"""
-
-# https://iso639-3.sil.org/code_tables/download_tables
+from django.conf import settings
+from language import tags
 
 
 def iso_639_kwargs(code: str, ignore_invalid=False) -> Generator[dict[str, str], None, None]:
+    """Yields kwargs to query `IsoLang`
+    from any ISO 639 code.
+
+    Use `IsoLang.get_from_code` if you just need to get an instance.
+
+    Raises
+    ------
+    ValueError
+        If `code` cannot be a valid ISO 639 code
+        and ignore_invalid is not set.
+    """
     if len(code) == 2:
         yield {'part_1': code}
     elif len(code) == 3:
@@ -61,12 +32,10 @@ def iso_639_kwargs(code: str, ignore_invalid=False) -> Generator[dict[str, str],
         raise ValueError(f"cannot infer ISO 639 code from '{code}'")
 
 
-class Lang(models.Model):
-    class Scope(models.TextChoices):
-        INDIVIDUAL = 'I', 'individual'
-        MACROLANG = 'M', 'macrolanguage'
-        SPECIAL = 'S', 'special'
-
+class IsoLang(models.Model):
+    """
+    Represents an ISO 639 language.
+    """
     class LangType(models.TextChoices):
         ANCIENT = 'A', 'ancient'
         CONSTRUCTED = 'C', 'constructed'
@@ -75,6 +44,12 @@ class Lang(models.Model):
         LIVING = 'L', 'living'
         SPECIAL = 'S', 'special'
 
+    class Scope(models.TextChoices):
+        INDIVIDUAL = 'I', 'individual'
+        MACROLANGUAGE = 'M', 'macrolanguage'
+        SPECIAL = 'S', 'special'
+
+    ref_name = models.CharField('reference name', max_length=150)
     part_3 = models.CharField(
         'alpha-3 code (ISO 639-3)', unique=True, max_length=3)
     part_1 = models.CharField(
@@ -83,22 +58,40 @@ class Lang(models.Model):
         'bibliographic code (ISO 639-2/B)', null=True, max_length=3)
     part_2t = models.CharField(
         'terminological code (ISO 639-2/T)', null=True, max_length=3)
-
-    scope = models.CharField(choices=Scope.choices, max_length=1)
     lang_type = models.CharField(
         'type', choices=LangType.choices, max_length=1)
-    ref_name = models.CharField(max_length=150)
+    scope = models.CharField(choices=Scope.choices, max_length=1)
     comment = models.CharField(null=True, max_length=150)
 
-    macrolang = models.ForeignKey(
+    macrolanguage = models.ForeignKey(
         'self',
-        verbose_name='macrolanguage',
         related_name='individuals',
         null=True,
         on_delete=models.SET_NULL,
     )
     is_wordnet_supported = models.BooleanField(
         'supported by the Open Multilingual Wordnet', default=False)
+
+    @staticmethod
+    def get_from_code(code: str, **kwargs) -> Union['IsoLang', None]:
+        """
+        Returns a `IsoLang` from an ISO 639 code
+        and additional query kwargs.
+        """
+        for iso_kwargs in iso_639_kwargs(code):
+            try:
+                return IsoLang.objects.get(**iso_kwargs, **kwargs)
+            except IsoLang.DoesNotExist:
+                pass
+
+    @staticmethod
+    def native() -> 'IsoLang':
+        return IsoLang.get_from_code(settings.NATIVE_LANG_CODE)
+
+    @property
+    def short(self) -> str:
+        """Shortest ISO 639 code (part 1 or 3)"""
+        return self.part_1 or self.part_3
 
     def __str__(self):
         return f"{self.part_3} - {self.ref_name}"
@@ -107,8 +100,11 @@ class Lang(models.Model):
         verbose_name = 'ISO 639 language'
 
 
-class LangName(models.Model):
-    lang = models.ForeignKey(Lang, related_name='names',
+class IsoLangName(models.Model):
+    """Represents an English name from SIL
+    for an ISO 639 language.
+    """
+    iso_lang = models.ForeignKey(IsoLang, related_name='names',
                              on_delete=models.CASCADE)
     printable = models.CharField('printable translated name', max_length=75)
     inverted = models.CharField('inverted translated name', max_length=75)
@@ -120,7 +116,13 @@ class LangName(models.Model):
         verbose_name = 'language name'
 
 
-class LangSubtagRegistry(models.Model):
+class IanaSubtagRegistry(models.Model):
+    """Represents a saved instance
+    of the IANA Language Subtag Registry.
+
+    See https://www.iana.org/assignments/iso_lang-subtags-templates/iso_lang-subtags-templates.xhtml,
+    https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry.
+    """
     file_date = models.DateField()
     saved = models.DateTimeField()
 
@@ -131,34 +133,172 @@ class LangSubtagRegistry(models.Model):
         verbose_name = 'IANA Language Subtag Registry'
 
 
-class LangTag(models.Model):
-    class TagType(models.TextChoices):
-        LANGUAGE = 'L', 'language'
-        EXTLANG = 'E', 'external language'
-        REGION = 'R', 'region'
-        SCRIPT = 'S', 'script'
-        VARIANT = 'V', 'variant'
-        GRANDFATHERED = 'G', 'grandfathered'
-        REDUNDANT = 'X', 'redundant'
-        PRIVATE_USE = 'P', 'private use'
+class IanaSubtag(models.Model):
+    """Abstract class for models
+    saved from the IANA language subtag registry.
+    """
+    iana_registry = models.ForeignKey(
+        IanaSubtagRegistry, null=True, on_delete=models.CASCADE)
+    iana_deprecated = models.DateField(null=True)
+    iana_added = models.DateField(null=True)
 
+    def get_descriptions(self) -> list[str]:
+        return [desc.text for desc in self.descriptions.order_by('index')]
+
+    def get_description(self) -> str:
+        return self.descriptions.order_by('index').first().text
+
+    class Meta:
+        abstract = True
+
+
+class _IanaSubtagDesc(models.Model):
+    """Abstract class for models
+    providing descriptions for subtags
+    saved from the IANA language subtag registry.
+    Foreign keys to the subtag model should be defined
+    with `subtag`.
+    """
+    index = models.PositiveSmallIntegerField(default=0)
+    text = models.CharField(max_length=75)
+
+    def __str__(self):
+        return self.text
+
+    class Meta:
+        unique_together = (('subtag', 'index'), ('subtag', 'index'))
+        abstract = True
+
+
+def _iana_subtag_desc_fk(model_cls: type) -> models.ForeignKey:
+    return models.ForeignKey(model_cls, related_name='descriptions', on_delete=models.CASCADE)
+
+
+def _iana_subtag_desc_cls(model_cls: type, fk_name: Optional[str] = None) -> Type[_IanaSubtagDesc]:
+    """
+    Dynamically makes a model for descriptions from
+    the IANA language subtag registry.
+    """
+    if not fk_name:
+        fk_name = model_cls._meta.model_name
+
+    return type(
+        model_cls._meta.object_name+'Description',
+        (_IanaSubtagDesc, ),
+        {
+            fk_name: models.ForeignKey(
+                model_cls,
+                related_name='descriptions',
+                on_delete=models.SET_NULL,
+            ),
+            'Meta': type(
+                'Meta',
+                (type,),
+                {
+                    'unique_together': ((fk_name, 'index'), (fk_name, 'index')),
+                },
+            ),
+        },
+    )
+
+
+class Script(IanaSubtag):
+    """Represents an ISO 15924 script.
+    From https://www.unicode.org/iso15924/,
+    despite being an IANA subtag.
+    """
+    code = models.CharField('ISO 15924 code', unique=True, max_length=4)
+    no = models.PositiveSmallIntegerField('ISO 15924 number', unique=True)
+    name_en = models.CharField('English name', unique=True, max_length=150)
+    name_fr = models.CharField('nom français', unique=True, max_length=150)
+    pva = models.CharField('property value alias', null=True, max_length=150)
+    unicode_version = models.CharField(null=True, max_length=12)
+    script_date = models.DateField()
+
+    @property
+    def no_str(self) -> str:
+        return '{:03d}'.format(self.no)
+
+    def __str__(self):
+        return self.name_en
+
+    class Meta:
+        verbose_name = 'ISO 15924 script'
+
+
+class ScriptDescription(_IanaSubtagDesc):
+    subtag = _iana_subtag_desc_fk(Script)
+
+
+class Region(IanaSubtag):
+    un_m49 = models.CharField(max_length=3)
+    iso_3166 = models.CharField('alpha-2 (ISO 3166-1) code', max_length=2)
+
+
+class RegionDescription(_IanaSubtagDesc):
+    subtag = _iana_subtag_desc_fk(Region)
+
+
+class GrandfatheredLang(IanaSubtag):
+    tag_text = models.TextField(max_length=12)
+
+
+class GrandfatheredLangDescription(_IanaSubtagDesc):
+    subtag = _iana_subtag_desc_fk(GrandfatheredLang)
+
+
+class LangExtension(IanaSubtag):
+    text = models.CharField(max_length=3+2*(1+3))
+
+    def __str__(self):
+        return self.text
+
+    class Meta:
+        verbose_name = 'language extension'
+
+
+class LangExtDescription(_IanaSubtagDesc):
+    subtag = _iana_subtag_desc_fk(LangExtension)
+
+
+class Variant(IanaSubtag):
+    """Represents an RFC 5646 variant subtag.
+
+    See the ABNF definition at
+    https://www.rfc-editor.org/rfc/rfc5646.html
+    """
+    text = models.CharField(max_length=5*8)
+    digits = models.CharField(max_length=4)
+
+    class Meta:
+        verbose_name = 'RFC5646 variant subtag'
+
+
+class VariantDescription(_IanaSubtagDesc):
+    subtag = _iana_subtag_desc_fk(Variant)
+
+
+class Subtag(IanaSubtag):
+    """Represents a BCP 47 (RFC5646) tag or subtag.
+
+    See https://www.rfc-editor.org/info/bcp47.
+
+    TO BE DEPRECATED...
+    """
     class Scope(models.TextChoices):
         COLLECTION = 'C', 'collection'
         MACROLANGUAGE = 'M', 'macrolanguage'
         SPECIAL = 'S', 'special'
         PRIVATE_USE = 'P', 'private use'
 
-    registry = models.ForeignKey(
-        LangSubtagRegistry, related_name='subtags', on_delete=models.CASCADE)
-
-    tag_type = models.CharField('type', choices=TagType.choices, max_length=1)
+    tag_type = models.CharField(
+        'type', choices=tags.TagType.choices, max_length=1)
     tag = models.CharField(null=True, max_length=12)  # R, V
     subtag = models.CharField(null=True, max_length=12)  # not R, V
-    deprecated = models.DateField('date deprecated', null=True)
-    added = models.DateField('date added')
     scope = models.CharField(choices=Scope.choices,
                              null=True, max_length=1)  # L
-    macrolang = models.CharField('macrolanguage code', null=True, max_length=4)
+    macrolanguage = models.CharField(
+        'macrolanguage code', null=True, max_length=4)  # TODO: move to new model?
     comment = models.CharField(null=True, max_length=150)
     pref_value = models.CharField('preferred value', null=True, max_length=12)
     suppress_script = models.CharField(null=True, max_length=4)  # L
@@ -166,81 +306,74 @@ class LangTag(models.Model):
     @property
     def has_lang(self) -> bool:
         return self.tag_type in {
-            self.TagType.LANGUAGE,
-            self.TagType.EXTLANG,
-            self.TagType.VARIANT,
+            tags.TagType.LANGUAGE,
+            tags.TagType.EXTLANG,
+            tags.TagType.VARIANT,
         }
 
     def get_prefixes(self) -> list[str]:
         return [prefix.text for prefix in self.prefixes.order_by('index')]
 
-    def get_descriptions(self) -> list[str]:
-        return [desc.text for desc in self.descriptions.order_by('index')]
+    def get_search_codes(self) -> Generator[str, None, None]:
+        yield from filter(None, [self.pref_value, self.tag, self.subtag])
+        yield from self.get_prefixes()
 
-    def get_iso_639_macrolang(self) -> Lang | None:
+    def get_iso_macrolang(self) -> IsoLang | None:
         if not self.has_lang:
             return None
-        if not self.macrolang:
+        if not self.macrolanguage:
             return None
-        for kwargs in iso_639_kwargs(self.macrolang, True):
+        for kwargs in iso_639_kwargs(self.macrolanguage, True):
             try:
-                return Lang.objects.get(
-                    scope=Lang.Scope.MACROLANG,
+                return IsoLang.objects.get(
+                    scope=IsoLang.Scope.MACROLANGUAGE,
                     **kwargs,
                 )
-            except Lang.DoesNotExist:
+            except IsoLang.DoesNotExist:
                 pass
 
-    def get_iso_639(self) -> Lang:
+    def get_iso_lang(self) -> IsoLang | None:
         if not self.has_lang:
             return None
         kwargs = dict()
-        if macrolang := self.get_iso_639_macrolang():
-            kwargs['macrolang'] = macrolang
+        if macrolanguage := self.get_iso_macrolang():
+            kwargs['macrolanguage'] = macrolanguage
         if self.scope == self.Scope.MACROLANGUAGE:
-            kwargs['scope'] = Lang.Scope.MACROLANG
+            kwargs['scope'] = IsoLang.Scope.MACROLANGUAGE
         elif self.scope == self.Scope.SPECIAL:
-            kwargs['scope'] = Lang.Scope.SPECIAL
+            kwargs['scope'] = IsoLang.Scope.SPECIAL
         elif self.scope == None:
-            kwargs['scope'] = Lang.Scope.INDIVIDUAL
+            kwargs['scope'] = IsoLang.Scope.INDIVIDUAL
 
-        for code in [self.pref_value, self.tag,
-                     self.subtag, *self.get_prefixes()]:
-            if not code:
+        for code in filter(tags.ISO_639_RE.fullmatch, self.get_search_codes()):
+            try:
+                return IsoLang.get_from_code(code, **kwargs)
+            except IsoLang.DoesNotExist:
                 continue
-            for iso_kwargs in iso_639_kwargs(code, True):
-                try:
-                    return Lang.objects.get(
-                        **kwargs,
-                        **iso_kwargs,
-                    )
-                except Lang.DoesNotExist:
-                    pass
+
+    def get_region(self) -> Any | None: return  # TODO
+
+    def get_script(self) -> Script | None:
+        for code in filter(tags.ISO_15924_RE.fullmatch, self.get_search_codes()):
+            try:
+                return Script.objects.get(code=code)
+            except Script.DoesNotExist:
+                pass
 
     def __str__(self):
         return f"{self.subtag or self.tag} - {self.get_tag_type_display()}"
 
     class Meta:
-        verbose_name = 'RFC5646 language tag'
+        verbose_name = 'BCP 47 language subtag'
 
 
-class LangTagDescription(models.Model):
-    tag = models.ForeignKey(
-        LangTag, related_name='descriptions', on_delete=models.CASCADE)
-    index = models.PositiveSmallIntegerField()
-    text = models.CharField(max_length=150)
-
-    def __str__(self):
-        return self.text
-
-    class Meta:
-        verbose_name = 'RFC5646 language tag description'
-        unique_together = (('tag', 'index'), ('tag', 'text'))
+class SubtagDescription(_IanaSubtagDesc):
+    subtag = _iana_subtag_desc_fk(Subtag)
 
 
-class LangTagPrefix(models.Model):
-    tag = models.ForeignKey(
-        LangTag, related_name='prefixes', on_delete=models.CASCADE)
+class SubtagPrefix(models.Model):
+    subtag = models.ForeignKey(
+        Subtag, related_name='prefixes', on_delete=models.CASCADE)
     index = models.PositiveSmallIntegerField()
     text = models.CharField(max_length=150)
 
@@ -249,43 +382,43 @@ class LangTagPrefix(models.Model):
 
     class Meta:
         verbose_name = 'RFC5646 language tag prefix'
-        unique_together = (('tag', 'index'), ('tag', 'text'))
+        unique_together = (('subtag', 'index'), ('subtag', 'text'))
 
 
-"""
-class ExtLang(models.Model):
+
+class LangTag(models.Model):
+    """Represents an RFC5646 tag.
+
+    See https://www.rfc-editor.org/rfc/rfc5646.html.
+    """
+    lang_type = models.CharField(choices=tags.TagType.choices, max_length=1)
+    iso_lang = models.ForeignKey(
+        IsoLang,
+        verbose_name='language',
+        null=True,
+        on_delete=models.CASCADE,
+    )
+    script = models.ForeignKey(
+        Script, null=True, on_delete=models.CASCADE)
+    variants = models.ManyToManyField(Variant)
+    grandfathered = models.ForeignKey(
+        GrandfatheredLang, on_delete=models.CASCADE)
 
 
-class LangTagExt(models.Model):
-    code = models.CharField()
 
-class LangTagVariant(models.Model):
-"""
+class GoogleLang(models.Model):
+    """Information on a language regarding use with
+    the Google Cloud Translate API.
+    """
+    iso_lang = models.ForeignKey(
+        IsoLang, verbose_name='language', on_delete=models.CASCADE)
+    display_name = models.CharField(max_length=75)
+    supports_source = models.BooleanField()
+    supports_target = models.BooleanField()
+    tag = models.ForeignKey(LangTag, on_delete=models.PROTECT)
 
-"""
-class MacroLang(models.Model):
-    m = models.ForeignKey(Lang, verbose_name='macrolanguage',
-                          related_name='individuals', on_delete=models.CASCADE)
-    i = models.ForeignKey(Lang, verbose_name='individual language',
-                          related_name='macros', on_delete=models.CASCADE)
-    active = models.BooleanField(default=True)
-
-    @property
-    def i_status(self) -> str:
-        return 'A' if self.active else 'R'
-
-    @property.setter
-    def i_status(self, val: str):
-        if val == 'A':
-            self.active = True
-        elif val == 'R':
-            self.active = False
-        else:
-            raise ValueError(f"invalid status {val}")
-
-    def __str__(self):
-        return f"{self.m.iso_639_3}/{self.i.iso_639_}"
-"""
+    class Meta:
+        verbose_name = 'Google Cloud Translate API language'
 
 
 class SpacyModelSize(models.Model):
@@ -305,7 +438,10 @@ class SpacyModelType(models.Model):
         return self.abbr
 
 
-def parse_to_spacy_model_kwargs(model_name: str, as_objs: bool) -> dict[str]:
+def parse_spacy_model_kwargs(model_name: str, as_objs: bool) -> dict[str]:
+    """Parse a SpaCy model / package name
+    into kwargs for querying `SpacyLangModel`.
+    """
     kwargs = dict()
     if '-' in model_name:
         components = model_name.split('-')
@@ -313,7 +449,9 @@ def parse_to_spacy_model_kwargs(model_name: str, as_objs: bool) -> dict[str]:
         kwargs['package_version'] = components[-1]
 
     components = model_name.split('_')
-    kwargs['lang__part_1'] = components.pop(0)
+
+    kwargs['iso_lang'] = IsoLang.get_from_code(components.pop(0))
+
     kwargs['model_size__abbr'] = components.pop(-1)
     kwargs['genre'] = components.pop(-1)
     if len(components):
@@ -322,7 +460,6 @@ def parse_to_spacy_model_kwargs(model_name: str, as_objs: bool) -> dict[str]:
         raise ValueError(
             f"could not resolve model name '{model_name}' with extra componnts {components}")
     if as_objs:
-        kwargs['lang'] = Lang.objects.get(part_1=kwargs.pop('lang__part_1'))
         kwargs['model_size'] = SpacyModelSize.objects.get(
             abbr=kwargs.pop('model_size__abbr'))
         if 'model_type__abbr' in kwargs:
@@ -332,7 +469,9 @@ def parse_to_spacy_model_kwargs(model_name: str, as_objs: bool) -> dict[str]:
 
 
 class SpacyLangModel(models.Model):
-    lang = models.ForeignKey(Lang, on_delete=models.CASCADE)
+    """Represents the core metadata of a SpaCy language model.
+    """
+    iso_lang = models.ForeignKey(IsoLang, on_delete=models.CASCADE)
     model_type = models.ForeignKey(
         SpacyModelType, null=True, on_delete=models.PROTECT)
     genre = models.CharField(max_length=12)
@@ -342,16 +481,18 @@ class SpacyLangModel(models.Model):
 
     @staticmethod
     def get_from_name(name: str) -> 'SpacyLangModel':
-        return SpacyLangModel.objects.get(**parse_to_spacy_model_kwargs(name, False))
+        return SpacyLangModel.objects.get(**parse_spacy_model_kwargs(name, False))
 
-    @cached_property
+    @property
     def name(self) -> str:
-        name_components = [self.lang.part_1, self.genre, self.model_size.abbr]
-        if self.model_type:
-            name_components.insert(1, self.model_type.abbr)
-        return '_'.join(name_components)
+        return '_'.join(filter(None, [
+            self.iso_lang.short,
+            self.model_type.abbr,
+            self.genre,
+            self.model_size.abbr
+        ]))
 
-    @cached_property
+    @property
     def full_name(self) -> str:
         return f"{self.name}-{self.package_version}"
 
@@ -359,11 +500,11 @@ class SpacyLangModel(models.Model):
     def nlp(self) -> Language:
         return spacy.load(self.name)
 
-    @cached_property
+    @property
     def docs_url(self) -> str:
-        return f"https://spacy.io/models/{self.lang.part_1}#{self.name}"
+        return f"https://spacy.io/models/{self.iso_lang.part_1}#{self.name}"
 
-    @cached_property
+    @property
     def github_meta_url(self) -> str:
         return f"https://raw.githubusercontent.com/explosion/spacy-models/master/meta/{self.full_name}.json"
 
@@ -383,7 +524,7 @@ class SpacyLangModel(models.Model):
         return self.full_name
 
     class Meta:
-        unique_together = ('lang', 'model_type', 'genre',
+        unique_together = ('iso_lang', 'model_type', 'genre',
                            'model_size', 'package_version')
 
 

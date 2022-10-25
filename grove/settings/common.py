@@ -1,8 +1,10 @@
 import os
+import json
 from pathlib import Path
 from music21.key import Key
 
-try: from yaml import CSafeLoader as SafeLoader
+try:
+    from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
 
@@ -29,6 +31,7 @@ INSTALLED_APPS = (
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'rest_framework',
     'language',
     'maas',
     'carpet',
@@ -65,8 +68,6 @@ TEMPLATES = (
 )
 
 WSGI_APPLICATION = 'grove.wsgi.application'
-
-
 
 
 # Password validation
@@ -110,8 +111,14 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
+
 YAML_LOADER = SafeLoader
-NATIVE_LANGUAGE_CODE = 'en'
+NATIVE_LANG_CODE = 'en'
 SPACY_PACKAGES = ('en_core_web_sm', )
 DICTIONARIES = (
     {
@@ -120,3 +127,9 @@ DICTIONARIES = (
     },
 )
 DEFAULT_KEY = Key('B')
+GOOGLE_CLOUD_PROJECT_ID = os.environ.get('GOOGLE_CLOUD_PROJECT_ID')
+
+if not GOOGLE_CLOUD_PROJECT_ID:
+    if credentials_path := os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+        with open(credentials_path) as f:
+            GOOGLE_CLOUD_PROJECT_ID = json.load(f)['project_id']

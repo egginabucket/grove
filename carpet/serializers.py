@@ -15,5 +15,7 @@ class TermSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Term
         fields = [
-            'lemma'
+            'lemma',
+            'iso_lang',
+            'pos_tag'
         ]

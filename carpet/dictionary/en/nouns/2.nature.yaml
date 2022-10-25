@@ -1,6 +1,6 @@
-elephant: '{animal} body big*3'
-bird: '{animal} home air*3'
-rodent: '{animal} ground small'
-tree: '{plant} big'
-grass: '{plant} small leaf*2'
-snake: '{animal} skin thread'
+elephant: "{animal} body big*3"
+bird: "{animal} home air*3"
+rodent: "{animal} ground small"
+tree: "{plant} big"
+grass: "{plant} small leaf*2"
+snake: "{animal} skin thread"

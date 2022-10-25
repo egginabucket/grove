@@ -1,7 +1,7 @@
 from functools import cached_property
 from typing import Generator
 from django.db import models
-from language.models import Lang, SpacyLangModel, PosTag
+from language.models import IsoLang, SpacyLangModel, PosTag
 from maas.models import Lexeme
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 
@@ -14,15 +14,15 @@ class Phrase(models.Model, AbstractPhrase):
 
     def get_children(self) -> Generator['Phrase', None, None]:
         for child_rel in self.child_rels.order_by('index'):
-            child = apply_model_phrase(self.lang, child_rel.child)
+            child = apply_model_phrase(self.iso_lang, child_rel.child)
             child.has_braces = child_rel.has_braces
             yield child
     
     def unwrapped_str(self) -> str:
         return str(self.lexeme) or ' '.join(map(str, self.get_children()))
 
-def apply_model_phrase(lang: Lang, phrase: Phrase):
-    phrase.lang = lang
+def apply_model_phrase(iso_lang: IsoLang, phrase: Phrase):
+    phrase.iso_lang = iso_lang
     return phrase # LOLL this is useful i swear
 
 
@@ -41,21 +41,21 @@ class PhraseComposition(models.Model):
         return super().save(*args, **kwargs)
 
 
-def parse_term_kwargs(lang: SpacyLangModel, tachy: str, infer_pos_tag: bool, as_objs: bool) -> dict[str]:
+def parse_term_kwargs(lang_m: SpacyLangModel, tachy: str, infer_pos_tag: bool, as_objs: bool) -> dict[str]:
     kwargs = {
-        'language': lang.language,
+        'iso_lang': lang_m.iso_lang,
     }
     kwargs['lemma'] = tachy.strip().replace('_', ' ')
     if ':' in tachy:
         kwargs['pos_tag__abbr'], kwargs['lemma'] = kwargs['lemma'].split(':')
         kwargs['pos_tag__abbr'] = kwargs['pos_tag__abbr'].upper()
-    term_token = lang.nlp(kwargs['term'])[0]
+    word_token = lang_m.nlp(kwargs['lemma'])[0]
 
-    if term_token.lemma_ != kwargs['lemma']:
-        print(f"WARNING: term '{kwargs['lemma']}' has lemma '{term_token.lemma_}'")
+    if word_token.lemma_ != kwargs['lemma']:
+        print(f"WARNING: word '{kwargs['lemma']}' has lemma '{word_token.lemma_}'")
 
     if infer_pos_tag and 'pos_tag__abbr' not in kwargs:
-        kwargs['pos_tag__abbr'] = term_token.pos_
+        kwargs['pos_tag__abbr'] = word_token.pos_
     if as_objs and 'pos_tag__abbr' in kwargs:
         kwargs['pos_tag'] = PosTag.objects.get(abbr=kwargs.pop('pos_tag__abbr'))        
     return kwargs
@@ -63,7 +63,7 @@ def parse_term_kwargs(lang: SpacyLangModel, tachy: str, infer_pos_tag: bool, as_
 
 class Term(models.Model):
     lemma = models.CharField(max_length=254)
-    language = models.ForeignKey(Lang, on_delete=models.PROTECT)
+    iso_lang = models.ForeignKey(IsoLang, on_delete=models.PROTECT)
     pos_tag = models.ForeignKey(PosTag, on_delete=models.PROTECT)
     phrase = models.ForeignKey(Phrase, related_name='defined_terms', on_delete=models.CASCADE)
     source_file = models.CharField(null=True, max_length=254)
@@ -76,4 +76,4 @@ class Term(models.Model):
         return self.tachygraph
 
     class Meta:
-        unique_together = ('lemma', 'language', 'pos_tag')
+        unique_together = ('lemma', 'iso_lang', 'pos_tag')

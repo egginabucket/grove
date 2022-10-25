@@ -1,81 +1,77 @@
-from typing import Any, Generator, Iterable
 from datetime import datetime
-import gzip
+from typing import Optional
+# import gzip
 import csv
 import yaml
 import requests
 from requests.compat import urljoin
 from requests.models import ITER_CHUNK_SIZE
-from google.cloud import translate_v2 as translate
+from google.cloud import translate
 from django.conf import settings
 from nltk.corpus import wordnet
-from language.models import Lang, LangName, LangSubtagRegistry, LangTag, LangTagDescription, LangTagPrefix, PosTag
+from language import models, tags
+from language.record_jar import parse_record_jar
+"""
+from language.models import (
+    models.IsoLang, models.IsoLangName, LangSubtagRegistry, models.LangTag,
+    models.LangTagDescription, models.LangTagPrefix, models.PosTag, models.Script
+)"""
 
 UNIVERSAL_POS_PATH = settings.BASE_DIR / 'language' / 'universal-pos.yaml'
 
 
 def get_default_translate_client():
-    return translate.Client(target_language=settings.NATIVE_LANGUAGE_CODE)
+    return translate.TranslationServiceClient(target_language=models.IsoLang.native().part_1)
 
 
 class SilTableReader(csv.DictReader):
-    # https://iso639-3.sil.org/code_tables/download_tables
+    """Inherits from `csv.DictReader` to read tab-delimited data
+    from https://iso639-3.sil.org/sites/iso639-3/files/downloads/.
 
+    More information is available at
+    https://iso639-3.sil.org/code_tables/download_tables
+    """
     base_url = 'https://iso639-3.sil.org/sites/iso639-3/files/downloads/'
-    charset = 'utf-8'
     chunk_size = ITER_CHUNK_SIZE
 
     def __init__(self, fn: str, *args, **kwargs):
         r = requests.get(urljoin(self.base_url, fn), stream=True)
         r.raise_for_status()
-        r.encoding = self.charset
+        r.encoding = 'utf-8'
         super().__init__(
             r.iter_lines(self.chunk_size, decode_unicode=True),
             dialect='excel-tab', *args, **kwargs)
 
 
-class RecordJarEntry(dict[str, list[str]]):
-    def add(self, key: str, val: str):
-        if key in self:
-            self[key].append(val)
-        else:
-            self[key] = [val]
-
-    def one(self, key: str) -> str:
-        vals = self[key]
-        if len(vals) > 1:
-            raise ValueError(f"key '{key}' has multiple values {vals}")
-        if not vals:
-            raise KeyError(f"key '{key}' has an empty list of values")
-        return vals[0]
-
-    def get_one(self, key: str, default=None) -> str | None | Any:
-        try:
-            return self.one(key)
-        except KeyError:
-            return default
-
-
-def parse_record_jar(lines: Iterable[str], indent='\t') -> Generator[RecordJarEntry, None, None]:
-    entry = RecordJarEntry()
-    for line in lines:
-        line_text = line.strip()
-        if not line_text:
-            continue
-        if line.startswith(indent):
-            entry[key][-1] += ' ' + line_text
-        elif line_text == '%%':
-            yield entry
-            entry = RecordJarEntry()
-        else:
-            key, val = line_text.split(":", 1)
-            entry.add(key.strip(), val.strip())
-    yield entry
-
-
-def register_macrolang_mappings(clear=True, reader=SilTableReader):
+def register_scripts(clear=True):
+    """Saves IS0 15924 scripts from unicode.org to the database.
+    See https://www.unicode.org/iso15924/iso15924.txt.
+    """
     if clear:
-        Lang.objects.all().update(macrolang=None)
+        models.Script.objects.all().delete()
+
+    r = requests.get('https://www.unicode.org/iso15924/iso15924.txt')
+    r.raise_for_status()
+
+    def line_is_valid(line: str) -> bool:
+        line = line.strip()
+        return bool(line and not line.startswith('#'))
+
+    models.Script.objects.bulk_create(models.Script(
+        **{key: val or None for key, val in row.items()},
+    ) for row in csv.DictReader(
+        filter(line_is_valid, r.iter_lines(decode_unicode=True)),
+        ['code', 'no', 'name_en',
+         'name_fr', 'pva', 'unicode_version', 'script_date'],
+        delimiter=';'
+    ))
+
+
+def register_macrolanguage_mappings(clear=True, reader=SilTableReader):
+    """Saves IS0 639-3 macrolanguage mappings from sil.org to the database.
+    """
+    if clear:
+        models.IsoLang.objects.all().update(macrolanguage=None)
 
     mappings: dict[str, list[str]] = dict()
     last_m_id = ''
@@ -86,24 +82,29 @@ def register_macrolang_mappings(clear=True, reader=SilTableReader):
         if row['I_Status'] == 'A':  # Active
             mappings[last_m_id].append(row['I_Id'])
     for m_part_3, i_part_3s in mappings.items():
-        Lang.objects.filter(part_3__in=i_part_3s
-                            ).update(macrolang=Lang.objects.get(part_3=m_part_3))
+        models.IsoLang.objects.filter(part_3__in=i_part_3s
+                                   ).update(macrolanguage=models.IsoLang.objects.get(part_3=m_part_3))
 
 
 def register_lang_names(clear=True, reader=SilTableReader):
+    """Saves ISO 639 language names from sil.org to the database.
+    See https://iso639-3.sil.org/sites/iso639-3/files/downloads/iso-639-3_Name_Index.tab.
+    """
     if clear:
-        LangName.objects.all().delete()
+        models.IsoLangName.objects.all().delete()
 
-    LangName.objects.bulk_create(LangName(
-        lang=Lang.objects.get(part_3=row['Id']),
+    models.IsoLangName.objects.bulk_create(models.IsoLangName(
+        iso_lang=models.IsoLang.objects.get(part_3=row['Id']),
         printable=row['Print_Name'],
         inverted=row['Inverted_Name'],
     ) for row in reader('iso-639-3_Name_Index.tab'))
 
 
-def register_lang_tags(clear=True):
+def register_iana_subtags(clear=True):
+    """Saves BCP 47 tags from the IANA language subtag registry to the database.
+    """
     if clear:
-        LangSubtagRegistry.objects.all().delete()
+        models.IanaSubtagRegistry.objects.all().delete()
     r = requests.get(
         'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry', stream=True)
     r.raise_for_status()
@@ -113,51 +114,79 @@ def register_lang_tags(clear=True):
     first = True
     for i, entry in enumerate(parse_record_jar(r.iter_lines(decode_unicode=True), indent='  ')):
         if first:
-            registry = LangSubtagRegistry.objects.create(
+            registry = models.IanaSubtagRegistry.objects.create(
                 file_date=entry.one('File-Date'),
                 saved=datetime.now(),
             )
             first = False
             continue
-        tag = LangTag.objects.create(
-            registry=registry,
-            tag_type=getattr(LangTag.TagType, entry.one('Type').upper()),
-            deprecated=entry.get_one('Deprecated'),
-            added=entry.one('Added'),
+        subtag = models.Subtag.objects.create(
+            iana_registry=registry,
+            tag_type=getattr(tags.TagType, entry.one('Type').upper()),
+            iana_deprecated=entry.get_one('Deprecated'),
+            iana_added=entry.one('Added'),
             subtag=entry.get_one('Subtag'),
             tag=entry.get_one('Tag'),
-            scope=getattr(LangTag.Scope, entry.one(
+            scope=getattr(models.Subtag.Scope, entry.one(
                 'Scope').upper().replace('-', '_')) if 'Scope' in entry else None,
             comment=entry.get_one('Comments'),
             pref_value=entry.get_one('Preferred-Value'),
-            suppress_script=entry.get_one('Suppress-Script'),
+            suppress_script=entry.get_one('Suppress-models.Script'),
         )
-        prefixes.extend(LangTagPrefix(
-            tag=tag,
+        prefixes.extend(models.SubtagPrefix(
+            subtag=subtag,
             index=j,
             text=text,
         ) for j, text in enumerate(entry.get('Prefix', [])))
-        descriptions.extend(LangTagDescription(
-            tag=tag,
+        descriptions.extend(models.SubtagDescription(
+            subtag=subtag,
             index=j,
             text=text,
         ) for j, text in enumerate(entry.get('Description', [])))
         if not i % 32:
-            LangTagPrefix.objects.bulk_create(prefixes)
+            models.SubtagPrefix.objects.bulk_create(prefixes)
             prefixes = []
-            LangTagDescription.objects.bulk_create(descriptions)
+            models.SubtagDescription.objects.bulk_create(descriptions)
             descriptions = []
 
-    LangTagPrefix.objects.bulk_create(prefixes)
-    LangTagDescription.objects.bulk_create(descriptions)
+    models.SubtagPrefix.objects.bulk_create(prefixes)
+    models.SubtagDescription.objects.bulk_create(descriptions)
 
 
-def register_langs(clear=True, sil_table_reader=SilTableReader, translate_client=get_default_translate_client):
+def register_google_langs(clear=True, client: Optional[translate.TranslationServiceClient] = None, location='global'):
     if clear:
-        Lang.objects.all().delete()
+        models.GoogleLang.objects.all().delete()
+    if not client:
+        client = get_default_translate_client()
+    parent = f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{location}"
+    resp = client.get_supported_languages(
+        display_language_code=models.IsoLang.short, parent=parent)
+    langs = []
+    for iso_lang in resp.languages:
+        langs.append(models.GoogleLang(
+            supports_source=iso_lang.support_source,
+            supports_target=iso_lang.support_target,
+        ))
+
+    models.GoogleLang.objects.bulk_create(models.GoogleLang(
+        iso_lang=models.IsoLang.get_from_code(iso_lang.language_code),
+        display_name=iso_lang.display_name,
+
+        # subtag TODO
+    ) for iso_lang in resp.languages)
+
+
+def register_langs(clear=True, sil_table_reader=SilTableReader,
+                   translate_client: Optional[translate.TranslationServiceClient] = None):
+    """Saves languages from sil.org,
+    language tags,
+    and Google Cloud information.
+    """
+    if clear:
+        models.IsoLang.objects.all().delete()
 
     wn_langs = wordnet.langs()
-    Lang.objects.bulk_create(Lang(
+    models.IsoLang.objects.bulk_create(models.IsoLang(
         part_3=row['Id'],
         part_2b=row['Part2B'] or None,
         part_2t=row['Part2T'] or None,
@@ -169,26 +198,28 @@ def register_langs(clear=True, sil_table_reader=SilTableReader, translate_client
         is_wordnet_supported=row['Id'] in wn_langs,
     ) for row in sil_table_reader('iso-639-3.tab'))
 
-    register_macrolang_mappings(False, sil_table_reader)
+    register_macrolanguage_mappings(False, sil_table_reader)
     register_lang_names(False, sil_table_reader)
-    register_lang_tags(clear)
+    register_scripts(clear)
+    register_iana_subtags(clear)
 
     """
-    Lang.objects.bulk_create([Lang(
-            code = lang['language'],
-            name = lang['name'],
-        ) for lang in translate_client.get_languages(
-        target_language=settings.NATIVE_LANGUAGE_CODE,
+    models.IsoLang.objects.bulk_create([models.IsoLang(
+            code = iso_lang['language'],
+            name = iso_lang['name'],
+        ) for iso_lang in translate_client.get_languages(
+        target_language=models.IsoLang.native().part_1,
     )])
     """
 
 
 def register_pos_tags(path=UNIVERSAL_POS_PATH, clear=True):
     if clear:
-        PosTag.objects.all().delete()
+        models.PosTag.objects.all().delete()
     with open(path) as f:
         pos_tags = []
         for cat, tags in yaml.load(f.read(), settings.YAML_LOADER).items():
             for abbr, name in tags.items():
-                pos_tags.append(PosTag(abbr=abbr, name=name, category=cat))
-        PosTag.objects.bulk_create(pos_tags)
+                pos_tags.append(models.PosTag(
+                    abbr=abbr, name=name, category=cat))
+        models.PosTag.objects.bulk_create(pos_tags)

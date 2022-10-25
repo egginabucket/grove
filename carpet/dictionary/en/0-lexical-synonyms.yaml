@@ -8,7 +8,7 @@ and: [and, also, too]
 animal: [animal]
 ass: [ass, NOUN:end, NOUN:rear, butt] # varies across archives
 back: [back, backward, behind, before]
-bad: [bad, 'no']
+bad: [bad, "no"]
 beautiful: [beautiful]
 believe: [believe, think]
 between: [between, medium, intermediate, vacillate, confuse]
@@ -46,7 +46,7 @@ fruit: [fruit, reward, prize, award, goal]
 get: [get, take, receive, catch, find]
 girl: [girl, woman, female]
 go: [go, move, goodbye, become]
-good: [good, 'yes']
+good: [good, "yes"]
 ground: [ground, floor, land, foundation]
 group: [group, set, class, team, collection]
 have: [have, own]
@@ -63,14 +63,14 @@ left: [left, beside] # removed with
 life: [life, energy, power, fuel, vigor]
 light: [light, bright, white]
 like: [VERB:like, love]
-limb: [limb, stick]
+limb: [limb, NOUN:stick]
 link: [link, connect, relate, copulate]
 machine: [machine, vehicle, car, console] # no word but "vehicle" was listed on 2009 archive
 make: [create, produce, accomplish] # added origin and then removed it
 mat: [NOUN:support, chair, bed, table, mat] # MISSING + added origin?
 maybe: [maybe, might, perhaps]
 me: [I, my]
-mistake: [mistake, screw up, incorrect, wrong, 'false']
+mistake: [mistake, screw up, incorrect, wrong, "false"]
 money: [money]
 mouth: [mouth, opening, hole]
 must: [must, have to, need, should]
@@ -111,7 +111,7 @@ this: [here, this, PRON:the, DET:the] # moved from this
 time: [time]
 tip: [NOUN:tip, finger, NOUN:point, unit]
 tool: [equipment, tool] # added origin
-'true': ['true', correct, honest]
+"true": ["true", correct, honest]
 try: [try, attempt]
 type: [kind, type, sort, category] # MISSING WORD
 under: [under, below, VERB:support]

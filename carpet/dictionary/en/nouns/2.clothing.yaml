@@ -1,2 +1,2 @@
-hat: '{clothing} for NOUN:head'
-shoe: '{clothing} for foot'
+hat: "{clothing} for NOUN:head"
+shoe: "{clothing} for foot"

@@ -1,4 +1,4 @@
-torso: '{NOUN:head} center'
-tooth: '{NOUN:point} mouth'
-leg: '{NOUN:rear} limb'
-arm: '{top} limb'
+torso: "{NOUN:head} center"
+tooth: "{NOUN:point} mouth"
+leg: "{NOUN:rear} limb"
+arm: "{top} limb"

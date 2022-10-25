@@ -1,6 +1,6 @@
 from typing import Generator
 from django.db import models
-from language.models import Lang
+from language.models import IsoLang
 from maas.flex_notes import AbstractFlexNote, Tone, DurationMode
 
 
@@ -27,24 +27,25 @@ class Lexeme(models.Model):
     def get_flex_notes(self) -> models.Manager['LexemeFlexNote']:
         return self.flex_notes.order_by('index')
 
-    def translation(self, lang: Lang) -> str:
-        return self.translations.get(lang=lang).term
+    def translation(self, iso_lang: IsoLang) -> str:
+        return self.translations.get(iso_lang=iso_lang).word
 
     def __str__(self):
-        return self.translation(Lang.native())
+        return self.translation(IsoLang.native())
 
 
 class LexemeTranslation(models.Model):
     lexeme = models.ForeignKey(
         Lexeme, related_name='translations', on_delete=models.CASCADE)
-    term = models.CharField(max_length=254)
-    lang = models.ForeignKey(Lang, on_delete=models.PROTECT)
+    word = models.CharField(max_length=254)
+    iso_lang = models.ForeignKey(
+        IsoLang, verbose_name='language', on_delete=models.PROTECT)
 
     def __str__(self):
-        return self.term
+        return self.word
 
     class Meta:
-        unique_together = ('lexeme', 'lang')
+        unique_together = (('word', 'iso_lang'), ('lexeme', 'iso_lang'))
 
 
 class LexemeFlexNote(FlexNote):
@@ -55,7 +56,7 @@ class LexemeFlexNote(FlexNote):
     index = models.PositiveSmallIntegerField()
 
     def __str__(self):
-        return f"{self.lexeme.english}/{self.index}: {self.flex_note}"
+        return f"{self.lexeme.translation(IsoLang.native())}/{self.index}: {self.flex_note}"
 
     class Meta:
         unique_together = ('lexeme', 'index')

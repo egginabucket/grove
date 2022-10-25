@@ -7,7 +7,7 @@ from music21.metadata import Metadata
 from music21.tempo import MetronomeMark
 from spacy.tokens import Token
 from django.conf import settings
-from language.models import Lang, SpacyLangModel
+from language.models import IsoLang, SpacyLangModel
 from carpet.base import AbstractPhrase, Depth, Suffix
 from carpet.models import apply_model_phrase, Term
 from carpet.m21 import DOWN_DEGREE, UP_DEGREE, phrase_to_m21
@@ -17,16 +17,17 @@ PREPEND_DEPS = {'nsubj'}
 COMM_REST = Rest('quarter')
 PERI_REST = Rest('whole')
 
+
 class WrapperPhrase(AbstractPhrase):
     def __init__(self,
-        child: AbstractPhrase,
-        multiplier: int = 1,
-        count: Optional[int] = None,
-        pitch_change: Optional[str] = None,
-        suffix: Optional[str] = None,
-        ):
+                 child: AbstractPhrase,
+                 multiplier: int = 1,
+                 count: Optional[int] = None,
+                 pitch_change: Optional[str] = None,
+                 suffix: Optional[str] = None,
+                 ):
         self.child = child
-        self.lang = child.lang
+        self.iso_lang = child.iso_lang
         self.multiplier = multiplier
         self.count = count
         self.pitch_change = pitch_change
@@ -35,13 +36,14 @@ class WrapperPhrase(AbstractPhrase):
     def get_children(self) -> Generator[AbstractPhrase, None, None]:
         yield self.child
 
+
 class DepArrangement:
-    pass # TODO
+    pass  # TODO
 
 
-def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lang: Optional[Lang] = None) -> Tuple[Stream, int]:
-    if not lang:
-        lang = Lang.objects.get(code=token.lang_)
+def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, iso_lang: Optional[IsoLang] = None) -> Tuple[Stream, int]:
+    if not iso_lang:
+        iso_lang = IsoLang.objects.get(code=token.lang_)
     stream = Score()
     phrase = AbstractPhrase()
     phrase.extend(Depth.LEXICAL, False)
@@ -56,14 +58,14 @@ def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lan
         term = None
         try:
             term = Term.objects.get(
-                language = lang,
-                lemma = token.lemma_,
-                pos_tag__abbr = token.pos_
+                iso_lang=iso_lang,
+                lemma=token.lemma_,
+                pos_tag__abbr=token.pos_,
             )
         except Term.DoesNotExist:
-            warn(f"{token.pos_}:{token.lemma_} not found") # TODO
+            warn(f"{token.pos_}:{token.lemma_} not found")  # TODO
         if term:
-            phrase = apply_model_phrase(lang, term.phrase)
+            phrase = apply_model_phrase(iso_lang, term.phrase)
         if 'Plur' in token.morph.get('Number'):
             phrase = WrapperPhrase(phrase, multiplier=2)
     prepend_tokens = []
@@ -76,27 +78,30 @@ def token_to_m21(token: Token, key: Key, nucleus_deg: int, add_lyrics: bool, lan
         elif child.pos_ == 'PUNCT' and child.text == '?':
             phrase = WrapperPhrase(phrase, suffix=Suffix.WHAT)
         elif child.dep_ == 'nummod':
-            try: # TODO
+            try:  # TODO: let user change?
                 count = int(child.text)
             except ValueError:
                 count = 2
-            phrase = WrapperPhrase(phrase, count=count) # TODO: let user change?
+            phrase = WrapperPhrase(phrase, count=count)
         if append_token:
             if child.dep_ in PREPEND_DEPS:
                 prepend_tokens.append(child)
             else:
                 append_tokens.append(child)
-            
+
     for child_token in prepend_tokens:
-        child_stream, nucleus_deg = token_to_m21(child_token, key, nucleus_deg, add_lyrics, lang)
+        child_stream, nucleus_deg = token_to_m21(
+            child_token, key, nucleus_deg, add_lyrics, iso_lang)
         stream.append(child_stream)
-    
+
     phrase.extend(Depth.LEXICAL, True)
-    phrase_stream, nucleus_deg = phrase_to_m21(phrase, key, nucleus_deg, add_lyrics)
+    phrase_stream, nucleus_deg = phrase_to_m21(
+        phrase, key, nucleus_deg, add_lyrics)
     stream.append(phrase_stream)
 
     for child_token in append_tokens:
-        child_stream, nucleus_deg = token_to_m21(child_token, key, nucleus_deg, add_lyrics, lang)
+        child_stream, nucleus_deg = token_to_m21(
+            child_token, key, nucleus_deg, add_lyrics, iso_lang)
         stream.append(child_stream)
 
     return stream.flatten(), nucleus_deg
@@ -111,7 +116,8 @@ def str_to_score(lang_m: SpacyLangModel, text: str, add_lyrics=True, key=setting
     for sent in doc.sents:
         for token in sent:
             if token.dep_ == 'ROOT':
-                substream, nucleus_deg = token_to_m21(token, key, nucleus_deg, add_lyrics, lang_m.language)
+                substream, nucleus_deg = token_to_m21(
+                    token, key, nucleus_deg, add_lyrics, lang_m.iso_lang)
                 stream.append(substream)
                 nucleus_deg += DOWN_DEGREE
         nucleus_deg += UP_DEGREE

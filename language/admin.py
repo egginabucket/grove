@@ -2,7 +2,7 @@ from django.contrib import admin
 from language import models
 
 
-@admin.register(models.Lang)
+@admin.register(models.IsoLang)
 class LangAdmin(admin.ModelAdmin):
     list_display = (
         'ref_name',
@@ -11,7 +11,7 @@ class LangAdmin(admin.ModelAdmin):
         'scope',
         'lang_type',
         'is_wordnet_supported',
-        'macrolang',
+        'macrolanguage',
     )
     search_fields = (
         'ref_name',
@@ -24,38 +24,40 @@ class LangAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(models.LangName)
-class LangNameAdmin(admin.ModelAdmin):
+@admin.register(models.IsoLangName)
+class IsoLangNameAdmin(admin.ModelAdmin):
     list_display = (
         'printable',
-        'lang'
+        'iso_lang'
     )
     search_fields = (
         'printable',
         'inverted',
-        'lang__part_3',
-        'lang__part_1',
-        'lang__part_2b',
+        'iso_lang__part_3',
+        'iso_lang__part_1',
+        'iso_lang__part_2b',
     )
 
-@admin.register(models.LangSubtagRegistry)
+
+@admin.register(models.IanaSubtagRegistry)
 class LangSubtagRegistry(admin.ModelAdmin):
     list_display = (
         'file_date',
         'saved',
     )
 
-@admin.register(models.LangTag)
+
+@admin.register(models.Subtag)
 class LangTagAdmin(admin.ModelAdmin):
     list_display = (
         'subtag',
         'tag',
         'tag_type',
-        'deprecated',
-        'added',
+        'iana_deprecated',
+        'iana_added',
         'scope',
         'pref_value',
-        'macrolang',
+        'macrolanguage',
     )
     search_fields = (
         'tag',
@@ -63,30 +65,82 @@ class LangTagAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(models.LangTagDescription)
+@admin.register(models.SubtagDescription)
 class LangTagDescriptionAdmin(admin.ModelAdmin):
     list_display = (
         'text',
         'index',
-        'tag',
+        'subtag',
     )
     search_fields = (
         'text',
         'index',
-        'tag__tag',
-        'tag__subtag',
+        'subtag__tag',
+        'subtag__subtag',
     )
 
 
-@admin.register(models.LangTagPrefix)
+@admin.register(models.SubtagPrefix)
 class LangTagPrefixAdmin(admin.ModelAdmin):
-    list_display = LangTagDescriptionAdmin.list_display
-    search_fields = LangTagDescriptionAdmin.search_fields
+    list_display = (
+        'text',
+        'index',
+        'subtag',
+    )
+    search_fields = (
+        'text',
+        'index',
+        'subtag__tag',
+        'subtag__subtag',
+    )
+    # list_display = LangTagDescriptionAdmin.list_display
+    # search_fields = LangTagDescriptionAdmin.search_fields
+
+
+@admin.register(models.Script)
+class ScriptAdmin(admin.ModelAdmin):
+    list_display = (
+        'code',
+        'no',
+        'name_en',
+        'pva',
+        'unicode_version',
+        'script_date'
+    )
+    search_fields = (
+        'code',
+        'no',
+        'name_en',
+        'name_fr',
+        'pva',
+    )
 
 
 @admin.register(models.SpacyLangModel)
 class SpacyLangModelAdmin(admin.ModelAdmin):
-    pass
+    list_display = (
+        'iso_lang',
+        'model_size',
+        'model_type',
+        'genre',
+        'package_version',
+        'downloaded',
+    )
+    search_fields = (
+        'iso_lang__ref_name'
+        'iso_lang__part_3',
+        'iso_lang__part_1',
+        'iso_lang__part_2b',
+        'version',
+    )
+    list_filter = (
+        'downloaded',
+    )
+    actions = ['download']
+    @admin.action(description='Download SpaCy package')
+    def download(self, _, queryset):
+        for obj in queryset:
+            obj.download()
 
 
 @admin.register(models.SpacyModelSize)
@@ -104,4 +158,5 @@ class PosTagAdmin(admin.ModelAdmin):
     list_display = (
         'abbr',
         'name',
+        'category',
     )
