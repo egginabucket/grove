@@ -19,11 +19,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 
-ALLOWED_HOSTS = ()
+ALLOWED_HOSTS = []
 
 # Application definition
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -36,7 +36,7 @@ INSTALLED_APPS = (
     'maas',
     'carpet',
     'translator',
-)
+]
 
 MIDDLEWARE = (
     'corsheaders.middleware.CorsMiddleware',
@@ -51,7 +51,7 @@ MIDDLEWARE = (
 
 ROOT_URLCONF = 'grove.urls'
 
-TEMPLATES = (
+TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [],
@@ -65,7 +65,7 @@ TEMPLATES = (
             ),
         },
     },
-)
+]
 
 WSGI_APPLICATION = 'grove.wsgi.application'
 
@@ -73,7 +73,7 @@ WSGI_APPLICATION = 'grove.wsgi.application'
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
 
-AUTH_PASSWORD_VALIDATORS = (
+AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
@@ -86,7 +86,7 @@ AUTH_PASSWORD_VALIDATORS = (
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
-)
+]
 
 
 # Internationalization
@@ -119,13 +119,13 @@ REST_FRAMEWORK = {
 
 YAML_LOADER = SafeLoader
 NATIVE_LANG_CODE = 'en'
-SPACY_PACKAGES = ('en_core_web_sm', )
-DICTIONARIES = (
+SPACY_PACKAGES = ['en_core_web_sm', ]
+DICTIONARIES = [
     {
         'lang': 'en_core_web_sm',
         'path': BASE_DIR / 'carpet' / 'dictionary' / 'en',
     },
-)
+]
 DEFAULT_KEY = Key('B')
 GOOGLE_CLOUD_PROJECT_ID = os.environ.get('GOOGLE_CLOUD_PROJECT_ID')
 

@@ -21,8 +21,6 @@ class SubtagType(models.TextChoices):
     
 
 class TagType(models.TextChoices):
-    """TO BE DEPRECATED
-    """
     GRANDFATHERED = 'G', 'grandfathered'
     PRIVATE_USE = 'P', 'private use'
     REDUNDANT = 'X', 'redundant / irregular'

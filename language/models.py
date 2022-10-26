@@ -1,6 +1,6 @@
 from functools import cached_property
-from logging.config import valid_ident
 from typing import Any, Optional, Sequence, Generator, Union, Type
+from unittest import IsolatedAsyncioTestCase
 import requests
 import spacy
 from spacy.language import Language
@@ -9,27 +9,6 @@ from spacy.cli._util import WHEEL_SUFFIX, SDIST_SUFFIX
 from django.db import models
 from django.conf import settings
 from language import tags
-
-
-def iso_639_kwargs(code: str, ignore_invalid=False) -> Generator[dict[str, str], None, None]:
-    """Yields kwargs to query `IsoLang`
-    from any ISO 639 code.
-
-    Use `IsoLang.get_from_code` if you just need to get an instance.
-
-    Raises
-    ------
-    ValueError
-        If `code` cannot be a valid ISO 639 code
-        and ignore_invalid is not set.
-    """
-    if len(code) == 2:
-        yield {'part_1': code}
-    elif len(code) == 3:
-        for field in ('part_3', 'part_2b', 'part_2t'):
-            yield {field: code}
-    elif not ignore_invalid:
-        raise ValueError(f"cannot infer ISO 639 code from '{code}'")
 
 
 class IsoLang(models.Model):
@@ -73,12 +52,33 @@ class IsoLang(models.Model):
         'supported by the Open Multilingual Wordnet', default=False)
 
     @staticmethod
+    def kwargs_from_code(code: str, ignore_invalid=False) -> Generator[dict[str, str], None, None]:
+        """Yields kwargs for querying
+        from any ISO 639 code.
+
+        Use `get_from_code` if you just need to get an object.
+
+        Raises
+        ------
+        ValueError
+            If `code` cannot be a valid ISO 639 code
+            and ignore_invalid is not set.
+        """
+        if len(code) == 2:
+            yield {'part_1': code}
+        elif len(code) == 3:
+            for field in ('part_3', 'part_2b', 'part_2t'):
+                yield {field: code}
+        elif not ignore_invalid:
+            raise ValueError(f"cannot infer ISO 639 code from '{code}'")
+
+    @staticmethod
     def get_from_code(code: str, **kwargs) -> Union['IsoLang', None]:
         """
-        Returns a `IsoLang` from an ISO 639 code
+        Gets an object from an ISO 639 code
         and additional query kwargs.
         """
-        for iso_kwargs in iso_639_kwargs(code):
+        for iso_kwargs in IsoLang.kwargs_from_code(code):
             try:
                 return IsoLang.objects.get(**iso_kwargs, **kwargs)
             except IsoLang.DoesNotExist:
@@ -89,7 +89,7 @@ class IsoLang(models.Model):
         return IsoLang.get_from_code(settings.NATIVE_LANG_CODE)
 
     @property
-    def short(self) -> str:
+    def ietf(self) -> str:
         """Shortest ISO 639 code (part 1 or 3)"""
         return self.part_1 or self.part_3
 
@@ -105,7 +105,7 @@ class IsoLangName(models.Model):
     for an ISO 639 language.
     """
     iso_lang = models.ForeignKey(IsoLang, related_name='names',
-                             on_delete=models.CASCADE)
+                                 on_delete=models.CASCADE)
     printable = models.CharField('printable translated name', max_length=75)
     inverted = models.CharField('inverted translated name', max_length=75)
 
@@ -141,12 +141,14 @@ class IanaSubtag(models.Model):
         IanaSubtagRegistry, null=True, on_delete=models.CASCADE)
     iana_deprecated = models.DateField(null=True)
     iana_added = models.DateField(null=True)
+    iana_comments = models.CharField(null=True, max_length=150)
+    iana_pref_value = models.CharField(max_length=12)
 
     def get_descriptions(self) -> list[str]:
-        return [desc.text for desc in self.descriptions.order_by('index')]
+        return [desc.text for desc in self.iana_descriptions.order_by('index')]
 
     def get_description(self) -> str:
-        return self.descriptions.order_by('index').first().text
+        return self.iana_descriptions.order_by('index').first().text
 
     class Meta:
         abstract = True
@@ -162,44 +164,16 @@ class _IanaSubtagDesc(models.Model):
     index = models.PositiveSmallIntegerField(default=0)
     text = models.CharField(max_length=75)
 
+    @staticmethod
+    def _make_subtag_fk(model_cls: type) -> models.ForeignKey:
+        return models.ForeignKey(model_cls, related_name='iana_descriptions', on_delete=models.CASCADE)
+
     def __str__(self):
         return self.text
 
     class Meta:
         unique_together = (('subtag', 'index'), ('subtag', 'index'))
         abstract = True
-
-
-def _iana_subtag_desc_fk(model_cls: type) -> models.ForeignKey:
-    return models.ForeignKey(model_cls, related_name='descriptions', on_delete=models.CASCADE)
-
-
-def _iana_subtag_desc_cls(model_cls: type, fk_name: Optional[str] = None) -> Type[_IanaSubtagDesc]:
-    """
-    Dynamically makes a model for descriptions from
-    the IANA language subtag registry.
-    """
-    if not fk_name:
-        fk_name = model_cls._meta.model_name
-
-    return type(
-        model_cls._meta.object_name+'Description',
-        (_IanaSubtagDesc, ),
-        {
-            fk_name: models.ForeignKey(
-                model_cls,
-                related_name='descriptions',
-                on_delete=models.SET_NULL,
-            ),
-            'Meta': type(
-                'Meta',
-                (type,),
-                {
-                    'unique_together': ((fk_name, 'index'), (fk_name, 'index')),
-                },
-            ),
-        },
-    )
 
 
 class Script(IanaSubtag):
@@ -227,7 +201,7 @@ class Script(IanaSubtag):
 
 
 class ScriptDescription(_IanaSubtagDesc):
-    subtag = _iana_subtag_desc_fk(Script)
+    subtag = _IanaSubtagDesc._make_subtag_fk(Script)
 
 
 class Region(IanaSubtag):
@@ -236,7 +210,7 @@ class Region(IanaSubtag):
 
 
 class RegionDescription(_IanaSubtagDesc):
-    subtag = _iana_subtag_desc_fk(Region)
+    subtag = _IanaSubtagDesc._make_subtag_fk(Region)
 
 
 class GrandfatheredLang(IanaSubtag):
@@ -244,7 +218,7 @@ class GrandfatheredLang(IanaSubtag):
 
 
 class GrandfatheredLangDescription(_IanaSubtagDesc):
-    subtag = _iana_subtag_desc_fk(GrandfatheredLang)
+    subtag = _IanaSubtagDesc._make_subtag_fk(GrandfatheredLang)
 
 
 class LangExtension(IanaSubtag):
@@ -258,7 +232,7 @@ class LangExtension(IanaSubtag):
 
 
 class LangExtDescription(_IanaSubtagDesc):
-    subtag = _iana_subtag_desc_fk(LangExtension)
+    subtag = _IanaSubtagDesc._make_subtag_fk(LangExtension)
 
 
 class Variant(IanaSubtag):
@@ -275,7 +249,7 @@ class Variant(IanaSubtag):
 
 
 class VariantDescription(_IanaSubtagDesc):
-    subtag = _iana_subtag_desc_fk(Variant)
+    subtag = _IanaSubtagDesc._make_subtag_fk(Variant)
 
 
 class Subtag(IanaSubtag):
@@ -323,14 +297,8 @@ class Subtag(IanaSubtag):
             return None
         if not self.macrolanguage:
             return None
-        for kwargs in iso_639_kwargs(self.macrolanguage, True):
-            try:
-                return IsoLang.objects.get(
-                    scope=IsoLang.Scope.MACROLANGUAGE,
-                    **kwargs,
-                )
-            except IsoLang.DoesNotExist:
-                pass
+        return IsoLang.get_from_code(self.macrolanguage, scope=IsoLang.Scope.MACROLANGUAGE)
+      
 
     def get_iso_lang(self) -> IsoLang | None:
         if not self.has_lang:
@@ -368,7 +336,7 @@ class Subtag(IanaSubtag):
 
 
 class SubtagDescription(_IanaSubtagDesc):
-    subtag = _iana_subtag_desc_fk(Subtag)
+    subtag = _IanaSubtagDesc._make_subtag_fk(Subtag)
 
 
 class SubtagPrefix(models.Model):
@@ -383,7 +351,6 @@ class SubtagPrefix(models.Model):
     class Meta:
         verbose_name = 'RFC5646 language tag prefix'
         unique_together = (('subtag', 'index'), ('subtag', 'text'))
-
 
 
 class LangTag(models.Model):
@@ -403,7 +370,6 @@ class LangTag(models.Model):
     variants = models.ManyToManyField(Variant)
     grandfathered = models.ForeignKey(
         GrandfatheredLang, on_delete=models.CASCADE)
-
 
 
 class GoogleLang(models.Model):
