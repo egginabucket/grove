@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Generator, Optional
 # import gzip
 import csv
 import yaml
@@ -10,18 +10,15 @@ from google.cloud import translate
 from django.conf import settings
 from nltk.corpus import wordnet
 from language import models, tags
+from language import record_jar
 from language.record_jar import parse_record_jar
-"""
-from language.models import (
-    models.IsoLang, models.IsoLangName, LangSubtagRegistry, models.LangTag,
-    models.LangTagDescription, models.LangTagPrefix, models.PosTag, models.Script
-)"""
+
 
 UNIVERSAL_POS_PATH = settings.BASE_DIR / 'language' / 'universal-pos.yaml'
 
 
 def get_default_translate_client():
-    return translate.TranslationServiceClient(target_language=models.IsoLang.native().part_1)
+    return translate.TranslationServiceClient(target_language=models.IsoLang.native().ietf)
 
 
 class SilTableReader(csv.DictReader):
@@ -34,13 +31,42 @@ class SilTableReader(csv.DictReader):
     base_url = 'https://iso639-3.sil.org/sites/iso639-3/files/downloads/'
     chunk_size = ITER_CHUNK_SIZE
 
-    def __init__(self, fn: str, *args, **kwargs):
+    def __init__(self, fn: str, **kwargs):
         r = requests.get(urljoin(self.base_url, fn), stream=True)
         r.raise_for_status()
         r.encoding = 'utf-8'
         super().__init__(
             r.iter_lines(self.chunk_size, decode_unicode=True),
-            dialect='excel-tab', *args, **kwargs)
+            dialect='excel-tab', **kwargs)
+
+
+class IanaSubtagRegistry:
+    """Provides an IanaSubtagRegistry object and
+    an iterable of records from
+    https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry.
+    
+    Attributes
+    ----------
+    object: models.IanaSubtagRegistry
+    
+    records: Generator[record_jar.Record]
+    """
+    chunk_size = ITER_CHUNK_SIZE
+
+    def __init__(self):
+        response = requests.get(
+            'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry',
+            stream=True
+        )
+        response.raise_for_status()
+        self.records = parse_record_jar(
+            response.iter_lines(self.chunk_size),
+            indent=' ' * 2
+        )
+        self.object = models.IanaSubtagRegistry.objects.create(
+            file_date=next(self.records).one('File-Date'),
+            saved=datetime.now(),
+        )
 
 
 def register_scripts(clear=True):
@@ -69,6 +95,7 @@ def register_scripts(clear=True):
 
 def register_macrolanguage_mappings(clear=True, reader=SilTableReader):
     """Saves IS0 639-3 macrolanguage mappings from sil.org to the database.
+    See https://iso639-3.sil.org/sites/iso639-3/files/downloads/iso-639-3-macrolanguages.tab.
     """
     if clear:
         models.IsoLang.objects.all().update(macrolanguage=None)
@@ -83,7 +110,7 @@ def register_macrolanguage_mappings(clear=True, reader=SilTableReader):
             mappings[last_m_id].append(row['I_Id'])
     for m_part_3, i_part_3s in mappings.items():
         models.IsoLang.objects.filter(part_3__in=i_part_3s
-                                   ).update(macrolanguage=models.IsoLang.objects.get(part_3=m_part_3))
+                                      ).update(macrolanguage=models.IsoLang.objects.get(part_3=m_part_3))
 
 
 def register_lang_names(clear=True, reader=SilTableReader):
@@ -100,49 +127,73 @@ def register_lang_names(clear=True, reader=SilTableReader):
     ) for row in reader('iso-639-3_Name_Index.tab'))
 
 
+def register_iana_subtag_registry():
+    """Saves different types of subtags from the IANA registry
+    to their respective models.
+
+    Replaces `register_iana_subtags`.
+    """
+    registry = IanaSubtagRegistry()
+
+    for record in registry.records:
+        record_type = getattr(tags.TagType, record.one('Type').upper())
+        subtag = record.get_one('Subtag')
+        iana_kwargs = {
+            'iana_registry': registry.object,
+            'iana_deprecated': record.get_one('Deprecated'),
+            'iana_added': record.one('Added'),
+            'iana_comments': record.get_one('Comments'),
+            'iana_pref_value': record.get_one('Preferred-Value'),
+        }
+        if record_type == tags.TagType.LANGUAGE:
+            pass # TODO
+        elif record_type == tags.TagType.REGION:
+            kwargs = dict()
+            if tags.ISO_15924_RE.fullmatch(subtag):
+                kwargs['iso_15924'] = subtag
+            elif tags.UN_M49_RE.fullmatch(subtag):
+                kwargs['un_m49'] = subtag
+            region = Region.objects.
+        elif record_type == tags.TagType.GRANDFATHERED:
+            
+
+
+
 def register_iana_subtags(clear=True):
     """Saves BCP 47 tags from the IANA language subtag registry to the database.
+
+    TO BE DEPRECATED
     """
     if clear:
         models.IanaSubtagRegistry.objects.all().delete()
-    r = requests.get(
-        'https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry', stream=True)
-    r.raise_for_status()
     prefixes = []
     descriptions = []
 
-    first = True
-    for i, entry in enumerate(parse_record_jar(r.iter_lines(decode_unicode=True), indent='  ')):
-        if first:
-            registry = models.IanaSubtagRegistry.objects.create(
-                file_date=entry.one('File-Date'),
-                saved=datetime.now(),
-            )
-            first = False
-            continue
+    registry = IanaSubtagRegistry()
+    for i, record in enumerate(registry.records):
         subtag = models.Subtag.objects.create(
-            iana_registry=registry,
-            tag_type=getattr(tags.TagType, entry.one('Type').upper()),
-            iana_deprecated=entry.get_one('Deprecated'),
-            iana_added=entry.one('Added'),
-            subtag=entry.get_one('Subtag'),
-            tag=entry.get_one('Tag'),
-            scope=getattr(models.Subtag.Scope, entry.one(
-                'Scope').upper().replace('-', '_')) if 'Scope' in entry else None,
-            comment=entry.get_one('Comments'),
-            pref_value=entry.get_one('Preferred-Value'),
-            suppress_script=entry.get_one('Suppress-models.Script'),
+            iana_registry=registry.object,
+            tag_type=getattr(tags.TagType, record.one('Type').upper()),
+            iana_deprecated=record.get_one('Deprecated'),
+            iana_added=record.one('Added'),
+            subtag=record.get_one('Subtag'),
+            tag=record.get_one('Tag'),
+            scope=getattr(models.Subtag.Scope, record.one(
+                'Scope').upper().replace('-', '_')) if 'Scope' in record else None,
+            iana_comments=record.get_one('Comments'),
+            iana_pref_value=record.get_one('Preferred-Value'),
+            suppress_script=record.get_one('Suppress-models.Script'),
         )
         prefixes.extend(models.SubtagPrefix(
             subtag=subtag,
             index=j,
             text=text,
-        ) for j, text in enumerate(entry.get('Prefix', [])))
+        ) for j, text in enumerate(record.get('Prefix', [])))
         descriptions.extend(models.SubtagDescription(
             subtag=subtag,
             index=j,
             text=text,
-        ) for j, text in enumerate(entry.get('Description', [])))
+        ) for j, text in enumerate(record.get('Description', [])))
         if not i % 32:
             models.SubtagPrefix.objects.bulk_create(prefixes)
             prefixes = []
@@ -160,7 +211,7 @@ def register_google_langs(clear=True, client: Optional[translate.TranslationServ
         client = get_default_translate_client()
     parent = f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{location}"
     resp = client.get_supported_languages(
-        display_language_code=models.IsoLang.short, parent=parent)
+        display_language_code=models.IsoLang.ietf, parent=parent)
     langs = []
     for iso_lang in resp.languages:
         langs.append(models.GoogleLang(
