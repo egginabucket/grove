@@ -27,11 +27,11 @@ class Lexeme(models.Model):
     def get_flex_notes(self) -> models.Manager['LexemeFlexNote']:
         return self.flex_notes.order_by('index')
 
-    def translation(self, iso_lang: IsoLang) -> str:
+    def get_translation(self, iso_lang: IsoLang) -> str:
         return self.translations.get(iso_lang=iso_lang).word
 
     def __str__(self):
-        return self.translation(IsoLang.native())
+        return self.get_translation(IsoLang.native())
 
 
 class LexemeTranslation(models.Model):
@@ -56,7 +56,7 @@ class LexemeFlexNote(FlexNote):
     index = models.PositiveSmallIntegerField()
 
     def __str__(self):
-        return f"{self.lexeme.translation(IsoLang.native())}/{self.index}: {self.flex_note}"
+        return f"{self.lexeme.get_translation(IsoLang.native())}/{self.index}: {self.flex_note}"
 
     class Meta:
         unique_together = ('lexeme', 'index')

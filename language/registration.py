@@ -1,4 +1,6 @@
 from datetime import datetime
+from msilib.schema import SelfReg
+from string import digits
 from typing import Generator, Optional
 # import gzip
 import csv
@@ -11,6 +13,7 @@ from django.conf import settings
 from nltk.corpus import wordnet
 from language import models, tags
 from language import record_jar
+import language
 from language.record_jar import parse_record_jar
 
 
@@ -44,11 +47,11 @@ class IanaSubtagRegistry:
     """Provides an IanaSubtagRegistry object and
     an iterable of records from
     https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry.
-    
+
     Attributes
     ----------
     object: models.IanaSubtagRegistry
-    
+
     records: Generator[record_jar.Record]
     """
     chunk_size = ITER_CHUNK_SIZE
@@ -63,10 +66,21 @@ class IanaSubtagRegistry:
             response.iter_lines(self.chunk_size),
             indent=' ' * 2
         )
-        self.object = models.IanaSubtagRegistry.objects.create(
+        self.object = models.IanaSubtagRegistry(
             file_date=next(self.records).one('File-Date'),
             saved=datetime.now(),
         )
+
+
+def record_to_subtag(record: record_jar.Record) -> models.IanaSubtag:
+    return models.IanaSubtag(
+        tag_type=getattr(tags.TagType, record.one('Type').upper()),
+        text=record.get_one('Subtag') or record.get_one('Tag'),
+        deprecated=record.get_one('Deprecated'),
+        added=record.one('Added'),
+        comments=record.get_one('Comments'),
+        pref_value=record.get_one('Preferred-Value'),
+    )
 
 
 def register_scripts(clear=True):
@@ -109,8 +123,9 @@ def register_macrolanguage_mappings(clear=True, reader=SilTableReader):
         if row['I_Status'] == 'A':  # Active
             mappings[last_m_id].append(row['I_Id'])
     for m_part_3, i_part_3s in mappings.items():
-        models.IsoLang.objects.filter(part_3__in=i_part_3s
-                                      ).update(macrolanguage=models.IsoLang.objects.get(part_3=m_part_3))
+        models.IsoLang.objects.filter(
+            part_3__in=i_part_3s).update(
+                macrolanguage=models.IsoLang.objects.get(part_3=m_part_3))
 
 
 def register_lang_names(clear=True, reader=SilTableReader):
@@ -127,61 +142,121 @@ def register_lang_names(clear=True, reader=SilTableReader):
     ) for row in reader('iso-639-3_Name_Index.tab'))
 
 
-def register_iana_subtag_registry():
+def register_bare_iana_subtags(clear=True, descriptions_batch_size=32):
+    if clear:
+        models.IanaSubtagRegistry.objects.all().delete()
+    registry = IanaSubtagRegistry()
+    registry.object.save()
+
+    descriptions = []
+    for i, record in enumerate(registry.records):
+        iana_subtag = record_to_subtag(record)
+        iana_subtag.registry = registry.object
+        iana_subtag.save()
+
+        if i and not i % descriptions_batch_size:
+            models.IanaSubtagDescription.objects.bulk_create(descriptions)
+            descriptions = []
+        descriptions.extend(models.IanaSubtagDescription(
+            subtag=iana_subtag,
+            index=j,
+            text=text,
+        ) for j, text in enumerate(record.get('Description', [])))
+    models.IanaSubtagDescription.objects.bulk_create(descriptions)
+
+
+def register_iana_subtags(clear=True, descriptions_batch_size=32, prefixes_batch_size=32):
     """Saves different types of subtags from the IANA registry
     to their respective models.
-
-    Replaces `register_iana_subtags`.
     """
+    register_bare_iana_subtags(clear, descriptions_batch_size)
     registry = IanaSubtagRegistry()
 
-    for record in registry.records:
-        record_type = getattr(tags.TagType, record.one('Type').upper())
-        subtag = record.get_one('Subtag')
-        iana_kwargs = {
-            'iana_registry': registry.object,
-            'iana_deprecated': record.get_one('Deprecated'),
-            'iana_added': record.one('Added'),
-            'iana_comments': record.get_one('Comments'),
-            'iana_pref_value': record.get_one('Preferred-Value'),
-        }
-        if record_type == tags.TagType.LANGUAGE:
-            pass # TODO
-        elif record_type == tags.TagType.REGION:
+    prefixes = []
+    for i, record in enumerate(registry.records):
+        if i and not i % prefixes_batch_size:
+            models.IanaSubtagPrefix.objects.bulk_create(prefixes)
+            prefixes = []
+        iana_subtag = record_to_subtag(record)
+        iana_subtag = models.IanaSubtag.objects.get(
+            type_=iana_subtag.type_,
+            registry=registry.object,
+            text=iana_subtag.text,
+            deprecated=iana_subtag.deprecated,
+        )
+
+        prefixes.extend(models.IanaSubtagPrefix(  # TODO
+            subtag=iana_subtag,
+            index=j,
+            text=text,
+        ) for j, text in enumerate(record.get('Prefix', [])))
+
+        defaults = {'iana': iana_subtag}
+
+        if iana_subtag.type_ == tags.TagType.LANGUAGE:
             kwargs = dict()
-            if tags.ISO_15924_RE.fullmatch(subtag):
-                kwargs['iso_15924'] = subtag
-            elif tags.UN_M49_RE.fullmatch(subtag):
-                kwargs['un_m49'] = subtag
-            region = Region.objects.
-        elif record_type == tags.TagType.GRANDFATHERED:
-            
+            kwargs['iso'] = models.IsoLang.objects.from_ietf(
+                iana_subtag.text).first()
+            if scope := record.get_one('Scope'):
+                kwargs['scope'] = getattr(
+                    models.LangSubtag.Scope, scope.upper().replace('-', '_'))
+            if suppress_script := record.get_one('Suppress-script'):
+                kwargs['suppress_script'] = models.IanaSubtag.objects.scripts().get(
+                    text=suppress_script
+                ).script_subtag
+            if macrolanguage := record.get_one('Macrolanguage'):
+                kwargs['macrolanguage'] = models.IanaSubtag.objects.languages().get(
+                    text=macrolanguage,
+                    lang_subtag__scope=models.LangSubtag.Scope.MACROLANGUAGE,
+                ).lang_subtag
+            models.LangSubtag.objects.update_or_create(
+                defaults,
+                **kwargs
+            )
+        elif iana_subtag.type_ == tags.TagType.REGION:
+            kwargs = dict()
+            if tags.ISO_3166_1_RE.fullmatch(iana_subtag.text):
+                kwargs['iso__alpha_2'] = iana_subtag.text
+            elif tags.UN_M49_RE.fullmatch(iana_subtag.text):
+                kwargs['numeric_code'] = iana_subtag.text
+            models.Region.objects.get(**kwargs).update(**defaults)
+        elif iana_subtag.type_ == tags.TagType.SCRIPT:
+            models.Script.objects.get(code=iana_subtag.text).update(**defaults)
+        elif record.type_ == tags.TagType.VARIANT:
+            kwargs = dict()
+            if digits := tags.VARIANT_DIGITS_RE.search(iana_subtag.text):
+                kwargs['digits'] = digits.string,
+                kwargs['text'] = iana_subtag.text[:digits.start()]
+            models.Variant.objects.get_or_create(
+                defaults,
+                **kwargs
+            )
+    models.IanaSubtagPrefix.objects.bulk_create(prefixes)
 
 
-
+"""
 def register_iana_subtags(clear=True):
-    """Saves BCP 47 tags from the IANA language subtag registry to the database.
+    " ""Saves BCP 47 tags from the IANA language subtag registry to the database.
 
     TO BE DEPRECATED
-    """
+    " ""
     if clear:
         models.IanaSubtagRegistry.objects.all().delete()
     prefixes = []
-    descriptions = []
 
     registry = IanaSubtagRegistry()
     for i, record in enumerate(registry.records):
         subtag = models.Subtag.objects.create(
-            iana_registry=registry.object,
-            tag_type=getattr(tags.TagType, record.one('Type').upper()),
-            iana_deprecated=record.get_one('Deprecated'),
-            iana_added=record.one('Added'),
+            registry=registry.object,
+            type=getattr(tags.TagType, record.one('Type').upper()),
+            deprecated=record.get_one('Deprecated'),
+            added=record.one('Added'),
             subtag=record.get_one('Subtag'),
             tag=record.get_one('Tag'),
-            scope=getattr(models.Subtag.Scope, record.one(
+            scope=getattr(models.IanaSubtag.Scope, record.one(
                 'Scope').upper().replace('-', '_')) if 'Scope' in record else None,
-            iana_comments=record.get_one('Comments'),
-            iana_pref_value=record.get_one('Preferred-Value'),
+            comment=record.get_one('Comments'),
+            pref_value=record.get_one('Preferred-Value'),
             suppress_script=record.get_one('Suppress-models.Script'),
         )
         prefixes.extend(models.SubtagPrefix(
@@ -189,19 +264,19 @@ def register_iana_subtags(clear=True):
             index=j,
             text=text,
         ) for j, text in enumerate(record.get('Prefix', [])))
-        descriptions.extend(models.SubtagDescription(
+        descriptions.extend(models.IanaSubtagDescription(
             subtag=subtag,
             index=j,
             text=text,
         ) for j, text in enumerate(record.get('Description', [])))
         if not i % 32:
-            models.SubtagPrefix.objects.bulk_create(prefixes)
+            models.IanaSubtagPrefix.objects.bulk_create(prefixes)
             prefixes = []
-            models.SubtagDescription.objects.bulk_create(descriptions)
+            models.IanaSubtagDescription.objects.bulk_create(descriptions)
             descriptions = []
-
-    models.SubtagPrefix.objects.bulk_create(prefixes)
-    models.SubtagDescription.objects.bulk_create(descriptions)
+    models.IanaSubtagPrefix.objects.bulk_create(prefixes)
+    models.IanaSubtagDescription.objects.bulk_create(descriptions)
+"""
 
 
 def register_google_langs(clear=True, client: Optional[translate.TranslationServiceClient] = None, location='global'):
