@@ -1,0 +1,5 @@
+requires: []
+
+"[plant] big": [tree.n.01]
+"[skin] plant": [peel.n.02]
+"[plant] leaf*2 small": [grass.n.01]

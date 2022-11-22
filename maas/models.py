@@ -1,12 +1,12 @@
-from typing import Generator
 from django.db import models
-from language.models import IsoLang
-from maas.flex_notes import AbstractFlexNote, Tone, DurationMode
+from jangle.models import LanguageTag
+from maas.music import FLEX_NOTE_RE, AbstractFlexNote, Tone, DurationMode
 
 
 class FlexNote(models.Model, AbstractFlexNote):
     duration_mode = models.CharField(
-        choices=DurationMode.choices, max_length=1)
+        choices=DurationMode.choices, max_length=1
+    )
     tone = models.CharField(choices=Tone.choices, max_length=1)
     degree = models.SmallIntegerField(default=0)
     is_ghosted = models.BooleanField(default=False)
@@ -16,47 +16,75 @@ class FlexNote(models.Model, AbstractFlexNote):
 
 
 class Lexeme(models.Model):
+    translations: "models.manager.RelatedManager[LexemeTranslation]"
     comment = models.TextField(null=True)
+    # flex_notes = models.ManyToManyField(FlexNote, through='LexemeFlexNote')
 
-    def parse_flex_notes(self, raw_str: str) -> Generator['LexemeFlexNote', None, None]:
-        for i, flex_note_str in enumerate(raw_str.strip().split()):
-            flex_note = LexemeFlexNote(index=i, lexeme=self)
-            flex_note.parse(flex_note_str)
-            yield flex_note
+    def create_flex_notes(self, string: str):
+        def generate_flex_notes():
+            for match in FLEX_NOTE_RE.finditer(string):
+                flex_note = FlexNote()
+                flex_note.from_match(match)
+                yield flex_note
 
-    def get_flex_notes(self) -> models.Manager['LexemeFlexNote']:
-        return self.flex_notes.order_by('index')
+        flex_notes = FlexNote.objects.bulk_create(generate_flex_notes())
+        LexemeFlexNote.objects.bulk_create(
+            LexemeFlexNote(
+                flex_note=flex_note,
+                index=i,
+                lexeme=self,
+            )
+            for i, flex_note in enumerate(flex_notes)
+        )
 
-    def get_translation(self, iso_lang: IsoLang) -> str:
-        return self.translations.get(iso_lang=iso_lang).word
+    def get_flex_notes(self) -> list[FlexNote]:
+        return [
+            rel.flex_note for rel in self.flex_note_through.order_by("index")  # type: ignore
+        ]
+
+    def translate(self, lang: LanguageTag) -> str:
+        return self.translations.get(lang=lang).word
 
     def __str__(self):
-        return self.get_translation(IsoLang.native())
+        return self.translate(LanguageTag.objects.get_from_str('en'))
 
 
 class LexemeTranslation(models.Model):
     lexeme = models.ForeignKey(
-        Lexeme, related_name='translations', on_delete=models.CASCADE)
+        Lexeme,
+        related_name="translations",
+        on_delete=models.CASCADE,
+    )
     word = models.CharField(max_length=254)
-    iso_lang = models.ForeignKey(
-        IsoLang, verbose_name='language', on_delete=models.PROTECT)
+    lang = models.ForeignKey(
+        LanguageTag,
+        related_name="+",
+        on_delete=models.CASCADE,
+    )
 
     def __str__(self):
         return self.word
 
     class Meta:
-        unique_together = (('word', 'iso_lang'), ('lexeme', 'iso_lang'))
+        unique_together = (("word", "lang"), ("lexeme", "lang"))
 
 
-class LexemeFlexNote(FlexNote):
+class LexemeFlexNote(models.Model):
     flex_note = models.OneToOneField(
-        FlexNote, parent_link=True, on_delete=models.CASCADE)
+        FlexNote,
+        related_name="lexeme_through",
+        on_delete=models.CASCADE,
+    )
     lexeme = models.ForeignKey(
-        Lexeme, related_name='flex_notes', on_delete=models.CASCADE)
+        Lexeme,
+        related_name="flex_note_through",
+        on_delete=models.CASCADE,
+    )
     index = models.PositiveSmallIntegerField()
 
     def __str__(self):
-        return f"{self.lexeme.get_translation(IsoLang.native())}/{self.index}: {self.flex_note}"
+        return f"{str(self.lexeme)}/{self.index}: {self.flex_note}"
 
     class Meta:
-        unique_together = ('lexeme', 'index')
+        unique_together = ("lexeme", "index")
+        ordering = ["lexeme", "index"]

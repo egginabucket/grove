@@ -1,0 +1,21 @@
+requires: []
+
+"[feel] like*2":
+  - love.n.01
+  - love.n.04
+  - love.v.03 # dos
+"[thing] like*2":
+  - love.n.02
+"[person] like*2":
+  - beloved.n.01
+"[@love.n.01] -person":
+  - sexual_love.n.02
+"like*2":
+  - love.v.01
+  - love.v.02
+"[link] person":
+  - sexual_activity.n.01
+  - copulate.v.01
+  - fuck.n.01 # dos
+  - sleep_together.v.01
+"[feel] @sexual_activity.n.01": [arouse.v.07]

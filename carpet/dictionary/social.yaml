@@ -1,0 +1,9 @@
+requires: []
+
+"[person] left": [acquaintance.n.02, acquaintance.n.03]
+"[talk] story": [explanation.n.03]
+"[house] tip": [unit.n.03]
+"[type] person": [sort.n.03]
+"[way] life": [way.n.05]
+"[person] face": [representative.n.01]
+"[person] friend": [friend.n.02, ally.n.02]

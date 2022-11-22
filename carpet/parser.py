@@ -1,169 +1,171 @@
-from typing import Generator, Optional, Any
+from typing import Any, Generator, Optional
 
-from maas.models import Lexeme
-from language.models import SpacyLangModel
+from nltk.corpus import WordNetCorpusReader
+
 from carpet.base import (
-    SHOW_BRACES, SHOW_PARANTHESES,
-    MULTIPLIER_CHAR, COUNT_CHAR,
-    Depth, Suffix, PitchChange,
+    OPEN_CHAR,
+    CLOSE_CHAR,
+    PRIMARY_OPEN_CHAR,
+    PRIMARY_CLOSE_CHAR,
+    COUNT_CHAR,
+    MULTIPLIER_CHAR,
+    SYNSET_CHAR,
+    AbstractPhrase,
+    BasePhrase,
+    PitchChange,
+    Suffix,
 )
-from carpet.base import AbstractPhrase
-from carpet.models import Phrase, Term, apply_model_phrase, parse_term_kwargs
-
-
-"""
-class _ModelPhrase(AbstractPhrase):
-    true_attrs = ('phrase_obj', 'iso_lang', 'has_braces')
-
-    def __init__(self, iso_lang: SpacyLangModel, phrase: Phrase):
-        self = phrase
-        self.phrase_obj = phrase
-        self.iso_lang = iso_lang
-"""
-
-"""
-class ModelPhrase(AbstractPhrase, Phrase):
-    def __init__(self, iso_lang: SpacyLangModel, phrase: Phrase):
-        self = phrase
-        self.__class__ = ModelPhrase
-        self.iso_lang = iso_lang
-        self.phrase_obj = phrase"""
-
-"""
-    @property
-    def phrase_obj(self):
-        phrase = self
-        phrase.__class__ = Phrase
-        #phrase.Meta.abstract = False
-        return phrase
-    """
-
-"""
-    def __getattr__(self, __name: str) -> Any:
-        if __name in super().true_attrs:
-            return getattr(self, __name)
-        return getattr(self.phrase_obj, __name)
-        
-    def __setattr__(self, __name: str, __value: Any) -> None:
-        if __name in super().true_attrs:
-            return setattr(self, __name, __value)
-        return setattr(self.phrase_obj, __name, __value)
-    """
-""" def get_children(self) -> Generator['Phrase', None, None]:
-        for child_rel in self.phrase_obj.child_rels.order_by('index'):
-            child = ModelPhrase(self.iso_lang, child_rel.child)
-            child.has_braces = child_rel.has_braces
-            yield child
-    
-    def unwrapped_str(self) -> str:
-        return str(self.lexeme) or ' '.join(map(str, self.get_children()))
-    
-    class Meta:
-        abstract = True"""
+from jangle.models import LanguageTag
+from carpet.models import Phrase, PhraseComposition, SynsetDef
+from maas.models import Lexeme, LexemeTranslation
 
 
 class StrPhrase(AbstractPhrase):
-    lang_m: SpacyLangModel
+    lang: LanguageTag
+    wn: WordNetCorpusReader
+    phrase_str: str = ""
+    is_synset_linked = False
 
-    def __init__(self, lang_m: SpacyLangModel, phrase=''):
-        self.lang_m = lang_m
-        self.iso_lang = lang_m.iso_lang
+    def _check_lexeme(self):
+        if self.phrase_str.isalpha():
+            try:
+                self.lexeme = LexemeTranslation.objects.get(
+                    word=self.phrase_str,
+                    lang=self.lang,
+                ).lexeme
+                self.phrase_str = ""
+            except LexemeTranslation.DoesNotExist as e:
+                raise LexemeTranslation.DoesNotExist(
+                    f"lexeme '{self.phrase_str}'"
+                ) from e
+
+    def __init__(
+        self, lang: LanguageTag, wn: WordNetCorpusReader, phrase=""
+    ) -> None:
+        self.lang = lang
+        self.wn = wn
         self.phrase_str = phrase.strip()
+        if self.phrase_str:
+            self._check_lexeme()
 
     def get_children(self) -> Generator[AbstractPhrase, None, None]:
-        child = StrPhrase(self.lang_m)
-        parentheses_depth = 0
-        braces_depth = 0
+        if self.lexeme is not None:
+            return
+        if self.is_synset_linked:
+            try:
+                synset = self.wn.synset(self.phrase_str)
+                yield SynsetDef.objects.get_from_synset(synset).phrase
+            except SynsetDef.DoesNotExist as e:
+                raise SynsetDef.DoesNotExist(
+                    f"undefined synset '{self.phrase_str}'"
+                ) from e
+            return
+        child = StrPhrase(self.lang, self.wn)
+        depth = 0
+        primary_depth = 0
         is_multiplier = False
-        multiplier_str = ''
+        multiplier_str = ""
         is_count = False
-        count_str = ''
+        count_str = ""
         error_str = None
-        is_term = True
 
-        for i, char in enumerate(self.phrase_str + ' '):
-            # if char not in TERM_CHARS and i < len(self.phrase_str):
-            #    is_term = False
-            maintain_term = False
-            if char == '(':
-                if parentheses_depth:
+        for i, char in enumerate(self.phrase_str + " "):
+            if char == OPEN_CHAR:
+                if depth:
                     child.phrase_str += char
-                parentheses_depth += 1
-            elif char == ')':
-                parentheses_depth -= 1
-                if parentheses_depth:
+                depth += 1
+            elif char == CLOSE_CHAR:
+                depth -= 1
+                if depth:
                     child.phrase_str += char
-                elif parentheses_depth < 0:
-                    error_str = 'unopened ")"'
-            elif char == '{':
-                if braces_depth:
+                elif depth < 0:
+                    error_str = f"unopened '{CLOSE_CHAR}'"
+            elif char == PRIMARY_OPEN_CHAR:
+                if primary_depth:
                     child.phrase_str += char
                 else:
-                    child.has_braces = True
-                braces_depth += 1
-                if parentheses_depth:
-                    error_str = 'nested braces'
-            elif char == '}':
-                braces_depth -= 1
-                if braces_depth:
+                    child.is_primary = True
+                primary_depth += 1
+                if depth:
+                    error_str = "nested primary subphrase"
+            elif char == PRIMARY_CLOSE_CHAR:
+                primary_depth -= 1
+                if primary_depth:
                     child.phrase_str += char
-                elif braces_depth < 0:
-                    error_str = 'unopened "}"'
-            elif parentheses_depth or braces_depth:
+                elif primary_depth < 0:
+                    error_str = "unopened '{PRIMARY_CLOSE_CHAR}'"
+            elif primary_depth or primary_depth:
                 child.phrase_str += char
-
             elif not child.phrase_str and char in PitchChange.values:
                 if child.pitch_change:
-                    error_str = 'multiple tone changes'
+                    error_str = "multiple tone changes"
                 child.pitch_change = char
+            elif not child.phrase_str and char == SYNSET_CHAR:
+                if child.is_synset_linked:
+                    error_str = f"repeated '{SYNSET_CHAR}'"
+                child.is_synset_linked = True
             elif char == MULTIPLIER_CHAR:
+                if is_multiplier:
+                    error_str = f"repeated '{MULTIPLIER_CHAR}'"
                 is_multiplier = True
             elif is_multiplier and char.isdigit():
                 multiplier_str += char
             elif char == COUNT_CHAR:
+                if is_count:
+                    error_str = f"repeated '{COUNT_CHAR}'"
                 is_count = True
             elif is_count and char.isdigit():
                 count_str += char
             elif char in Suffix.values:
                 if child.suffix:
-                    error_str = 'multiple suffixes (use parentheses)'
+                    error_str = "multiple suffixes (use parentheses)"
                 child.suffix = char
             elif char.isspace():
-                if is_term:
-                    try:
-                        yield apply_model_phrase(self.iso_lang, Term.objects.get(
-                            # TODO
-                            **parse_term_kwargs(self.lang_m, child.phrase_str, True, False)
-                        ).phrase)
-                    except Term.DoesNotExist:
-                        raise ValueError(
-                            f"undefined term '{child.phrase_str}'")
-                else:
+                child.phrase_str = child.phrase_str.strip()
+                if len(child.phrase_str):
                     if multiplier_str:
                         child.multiplier *= int(multiplier_str)
                     if count_str:
                         if child.count is None:
                             child.count = 1
                         child.count *= int(count_str)
-                    if len(child.phrase_str) > 0:
-                        yield child
-                child = StrPhrase(self.lang_m)
-                parentheses_depth = 0
-                braces_depth = 0
+                    child._check_lexeme()
+                    yield child
+                child = StrPhrase(self.lang, self.wn)
+                depth = 0
+                primary_depth = 0
                 is_multiplier = False
-                multiplier_str = ''
+                multiplier_str = ""
                 is_count = False
-                count_str = ''
-                is_term = True
+                count_str = ""
             else:
                 child.phrase_str += char
-                maintain_term = True
-                # error_str = 'unparsable token'
-            if not maintain_term:
-                is_term = False
             if error_str:
                 raise ValueError(f"{error_str} at '{self.phrase_str}'[{i}]")
-        if parentheses_depth:
-            raise ValueError(f"unclosed parentheses in '{self.phrase_str}'")
-        if braces_depth:
-            raise ValueError(f"unclosed braces in '{self.phrase_str}'")
+        if depth:
+            raise ValueError(f"unclosed '{OPEN_CHAR}' in '{self.phrase_str}'")
+        if primary_depth:
+            raise ValueError(
+                f"unclosed '{PRIMARY_CLOSE_CHAR}' in '{self.phrase_str}'"
+            )
+        
+    def save(self) -> Phrase:
+        obj = Phrase.objects.create(
+            pitch_change=self.pitch_change,
+            multiplier=self.multiplier,
+            suffix=self.suffix,
+            count=self.count,
+            lexeme=self.lexeme,
+        )
+        for i, child in enumerate(self.get_children()):
+            if isinstance(child, self.__class__):
+                child_obj = child.save()
+            else:
+                child_obj = child
+            PhraseComposition.objects.create(
+                parent=obj,
+                child=child_obj,
+                index=i,
+                is_primary=child.is_primary,
+            )
+        return obj

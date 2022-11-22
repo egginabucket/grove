@@ -1,7 +1,0 @@
-bread: "{food} body"
-meat: "{food} come_from animal"
-juice: "{water} fruit"
-smoothie: "{cup} fruit"
-salad: "{collection} vegetable leaf leaf"
-sandwich: "food between bread"
-NOUN:orange: "{fruit} ADJ:orange"

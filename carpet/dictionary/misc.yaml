@@ -1,0 +1,9 @@
+requires: []
+
+"place that":
+  - there.n.01
+  - there.r.01
+  - there.r.03
+  - away.r.01
+
+"go -air": [breeze.n.01]

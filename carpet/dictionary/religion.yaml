@@ -1,0 +1,7 @@
+requires: []
+
+"[thing] cause*2": [deity.n.01, god.n.04]
+"[believe] cause*2": [religion.n.01]
+"[house] @religion.n.01": [religion.n.02]
+"[person]*2 -must -believe": [cult.n.01, cult.n.03]
+"[house] @cult.n.01": [cult.n.04, cult.n.05]

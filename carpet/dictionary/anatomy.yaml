@@ -1,0 +1,22 @@
+requires: []
+
+"[water] life": [blood.n.01]
+"[some] person": [part.n.02]
+
+"[house] knot body": [bone.n.01]
+"[@bone.n.01] stuff": [bone.n.02]
+"[house] @bone.n.01": [skeletal_system.n.01]
+"[@skeletal_system.n.01] outside": [exoskeleton.n.01]
+"[@skeletal_system.n.01] inside": [endoskeleton.n.01]
+
+"[skin] animal": [hide.n.02]
+"[limb] air": [wing.n.01]
+"[limb] water": [fin.n.05, fin.n.06]
+
+"[house] person": [person.n.02]
+"[tip] mouth": [tooth.n.01, tooth.n.02, tooth.n.03]
+"[limb] ass": [leg.n.02]
+"[@leg.n.02] person": [leg.n.01]
+"[limb] head": [arm.n.02]
+"[@arm.n.02] person": [arm.n.01]
+"[face] nose": [nose.n.02]

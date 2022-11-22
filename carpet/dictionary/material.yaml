@@ -1,0 +1,7 @@
+requires: []
+
+"[stuff] ground": [mineral.n.01, rock.n.02]
+"[thing] ground": [rock.n.01]
+"[stuff] ground dirty": [soil.n.02, earth.n.02, earth.n.05]
+"[stuff] water cool*2": [ice.n.01, ice.n.02, ice.v.02]
+"[water] mistake": [oil.n.01]

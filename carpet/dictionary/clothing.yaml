@@ -1,0 +1,5 @@
+requires: []
+
+"[cloth] reason head": [hat.n.01]
+"[cloth] reason foot": [shoe.n.01]
+"[cloth] reason body": [top.n.10]

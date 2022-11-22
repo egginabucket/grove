@@ -1,0 +1,12 @@
+requires: []
+
+"dark*2":
+  - black.n.01
+  - total_darkness.n.01
+  - black.a.01
+  - black.s.08
+  - coal_black.n.01
+"between -red and yellow": [orange.n.02, orange.s.01]
+"between -yellow and blue": [green.n.01, green.s.01]
+"between -blue and red": [purple.n.01, purple.s.01]
+"between -dark and light": [gray.n.06, grey.s.01]

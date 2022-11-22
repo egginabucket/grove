@@ -1,0 +1,62 @@
+requires: []
+
+"[time] sleep": [sleep.n.03]
+"[story] time": [sequence.n.02]
+"[tip] time": [point.n.06]
+
+"[time] forward": [future.n.01, ahead.r.02, ahead.r.04, ahead.r.06]
+"[time] back": [past.n.01, back.r.04]
+
+"[tip] time small*3": [second.n.01]
+"[tip] time small*2": [minute.n.01, moment.n.02]
+"[tip] time small": [hour.n.01]
+"[tip] time": [day.n.01]
+"[tip] time big": [week.n.01]
+"[tip] time big*2": [calendar_month.n.01]
+"[tip] time big*3": [year.n.01]
+"[tip] time big*4": [decade.n.01]
+"[tip] time big*5": [century.n.01]
+"[tip] time big*6": [millennium.n.01] # dos
+"[tip] time big*7": [eon.n.01]
+
+"@day.n.01#30": [month.n.02]
+
+"[time] -this":
+  - now.n.01
+  - now.r.01
+  - nowadays.r.01
+  - now.r.04
+  - immediately.r.01
+  - now.r.07
+  - here.r.04
+"[@day.n.01] -this": [today.n.01, today.n.02, today.r.02]
+"[@day.n.01] -this under": [yesterday.n.01, yesterday.r.01]
+"[@day.n.01] -this over": [tomorrow.n.01]
+
+"[that] -@day.n.01#1": [monday.n.01]
+"[that] -@day.n.01#2": [tuesday.n.01]
+"[that] -@day.n.01#3": [wednesday.n.01]
+"[that] -@day.n.01#4": [thursday.n.01]
+"[that] -@day.n.01#5": [friday.n.01]
+"[that] -@day.n.01#1!": [saturday.n.01]
+"[that] -@day.n.01#2!": [sunday.n.01]
+
+"[that] -@calendar_month.n.01#1": [january.n.01]
+"[that] -@calendar_month.n.01#2": [february.n.01]
+"[that] -@calendar_month.n.01#3": [march.n.01]
+"[that] -@calendar_month.n.01#4": [april.n.01]
+"[that] -@calendar_month.n.01#5": [may.n.02]
+"[that] -@calendar_month.n.01#6": [june.n.01]
+"[that] -@calendar_month.n.01#7": [july.n.01]
+"[that] -@calendar_month.n.01#8": [august.n.01]
+"[that] -@calendar_month.n.01#9": [september.n.01]
+"[that] -@calendar_month.n.01#10": [october.n.01]
+"[that] -@calendar_month.n.01#11": [november.n.01]
+"[that] -@calendar_month.n.01#12": [december.n.01]
+
+"[some] -@year.n.01": [season.n.01]
+"[some] -@year.n.01": [season.n.02]
+"[that] -@season.n.02#1": [spring.n.01]
+"[that] -@season.n.02#2": [summer.n.01]
+"[that] -@season.n.02#3": [fall.n.01]
+"[that] -@season.n.02#4": [winter.n.01]

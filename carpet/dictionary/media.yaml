@@ -1,0 +1,5 @@
+requires: []
+
+"[thing] write": [book.n.02]
+"[group] -@book.n.02 leaf": [book.n.09]
+"[story] small": [report.n.03]

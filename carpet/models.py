@@ -1,79 +1,120 @@
+from __future__ import annotations
+
 from functools import cached_property
-from typing import Generator
+from typing import Generator, Any
+from nltk.corpus.reader import Synset, WordNetCorpusReader
 from django.db import models
-from language.models import IsoLang, SpacyLangModel, PosTag
+from jangle.utils import BatchedCreateManager
+from jangle.models import LanguageTag
+
+# from language.models import PartOfSpeech
 from maas.models import Lexeme
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 
+
 class Phrase(models.Model, AbstractPhrase):
-    pitch_change = models.CharField(choices=PitchChange.choices, null=True, max_length=1)
+    child_rels: "models.manager.RelatedManager[PhraseComposition]"
+    pitch_change = models.CharField(
+        choices=PitchChange.choices,
+        null=True,
+        max_length=1,
+    )
     multiplier = models.PositiveSmallIntegerField(default=1)
     count = models.PositiveSmallIntegerField(null=True)
-    suffix = models.CharField(choices=Suffix.choices, null=True, max_length=1)
-    lexeme = models.ForeignKey(Lexeme, null=True, on_delete=models.PROTECT)
+    suffix = models.CharField(
+        choices=Suffix.choices,
+        null=True,
+        max_length=1,
+    )
+    lexeme = models.ForeignKey(
+        Lexeme,
+        null=True,
+        on_delete=models.CASCADE,
+    )  # type: ignore
 
-    def get_children(self) -> Generator['Phrase', None, None]:
-        for child_rel in self.child_rels.order_by('index'):
-            child = apply_model_phrase(self.iso_lang, child_rel.child)
-            child.has_braces = child_rel.has_braces
-            yield child
-    
-    def unwrapped_str(self) -> str:
-        return str(self.lexeme) or ' '.join(map(str, self.get_children()))
+    def get_children(self) -> Generator[Phrase, None, None]:
+        for child_rel in self.child_rels.order_by("index"):
+            child_rel.child.is_primary = child_rel.is_primary
+            yield child_rel.child
 
-def apply_model_phrase(iso_lang: IsoLang, phrase: Phrase):
-    phrase.iso_lang = iso_lang
-    return phrase # LOLL this is useful i swear
+    def __str__(self) -> str:
+        return AbstractPhrase.__str__(self)
 
 
 class PhraseComposition(models.Model):
-    parent = models.ForeignKey(Phrase, related_name='child_rels', on_delete=models.CASCADE)
-    child = models.ForeignKey(Phrase, related_name='parent_rels', on_delete=models.CASCADE)
+    parent = models.ForeignKey(
+        Phrase,
+        related_name="child_rels",
+        on_delete=models.CASCADE,
+    )
+    child = models.ForeignKey(
+        Phrase,
+        related_name="parent_rels",
+        on_delete=models.CASCADE,
+    )
     index = models.SmallIntegerField()
-    has_braces = models.BooleanField(default=False)
+    is_primary = models.BooleanField(default=False)
 
-    class Meta:
-        unique_together = ('parent', 'index')
-    
     def save(self, *args, **kwargs):
         if self.parent.lexeme:
-            raise ValueError(f"Parent already has a lexeme: '{self.parent.lexeme}'")
+            raise ValueError(
+                f"Parent already has a lexeme: '{self.parent.lexeme}'"
+            )
         return super().save(*args, **kwargs)
 
-
-def parse_term_kwargs(lang_m: SpacyLangModel, tachy: str, infer_pos_tag: bool, as_objs: bool) -> dict[str]:
-    kwargs = {
-        'iso_lang': lang_m.iso_lang,
-    }
-    kwargs['lemma'] = tachy.strip().replace('_', ' ')
-    if ':' in tachy:
-        kwargs['pos_tag__abbr'], kwargs['lemma'] = kwargs['lemma'].split(':')
-        kwargs['pos_tag__abbr'] = kwargs['pos_tag__abbr'].upper()
-    word_token = lang_m.nlp(kwargs['lemma'])[0]
-
-    if word_token.lemma_ != kwargs['lemma']:
-        print(f"WARNING: word '{kwargs['lemma']}' has lemma '{word_token.lemma_}'")
-
-    if infer_pos_tag and 'pos_tag__abbr' not in kwargs:
-        kwargs['pos_tag__abbr'] = word_token.pos_
-    if as_objs and 'pos_tag__abbr' in kwargs:
-        kwargs['pos_tag'] = PosTag.objects.get(abbr=kwargs.pop('pos_tag__abbr'))        
-    return kwargs
+    class Meta:
+        unique_together = ("parent", "index")
+        ordering = ("parent", "index")
 
 
-class Term(models.Model):
-    lemma = models.CharField(max_length=254)
-    iso_lang = models.ForeignKey(IsoLang, on_delete=models.PROTECT)
-    pos_tag = models.ForeignKey(PosTag, on_delete=models.PROTECT)
-    phrase = models.ForeignKey(Phrase, related_name='defined_terms', on_delete=models.CASCADE)
+class SynsetDefQuerySet(models.QuerySet["SynsetDef"]):
+    def from_synset(self, synset: Synset) -> SynsetDefQuerySet:
+        return self.filter(pos=synset.pos(), wn_offset=synset.offset())
+
+    def get_from_synset(self, synset: Synset) -> SynsetDef:
+        return self.get(pos=synset.pos(), wn_offset=synset.offset())
+
+
+class SynsetDefManager(BatchedCreateManager["SynsetDef"]):
+    def get_queryset(self) -> SynsetDefQuerySet:
+        return SynsetDefQuerySet(self.model, using=self._db)
+
+    def from_synset(self, synset: Synset) -> SynsetDefQuerySet:
+        return self.get_queryset().from_synset(synset)
+
+    def get_from_synset(self, synset: Synset) -> SynsetDef:
+        return self.get_queryset().get_from_synset(synset)
+
+
+class SynsetDef(models.Model):
+    class WordnetPOS(models.TextChoices):
+        ADJ = WordNetCorpusReader.ADJ, "adjective"
+        ADJ_SAT = WordNetCorpusReader.ADJ_SAT, "satellite adjective"
+        ADV = WordNetCorpusReader.ADV, "adverb"
+        NOUN = WordNetCorpusReader.NOUN, "noun"
+        VERB = WordNetCorpusReader.VERB, "verb"
+
+    pos = models.CharField(
+        "part of speech",
+        choices=WordnetPOS.choices,
+        max_length=1,
+    )
+    wn_offset = models.PositiveBigIntegerField("offset")
+    phrase = models.ForeignKey(
+        Phrase,
+        related_name="defined_synsets",
+        on_delete=models.CASCADE,
+    )
     source_file = models.CharField(null=True, max_length=254)
 
-    @cached_property
-    def tachygraph(self) -> str:
-        return f"{self.pos_tag.abbr}:{self.lemma.replace(' ', '_')}"
+    def synset(self, wn: WordNetCorpusReader) -> Synset:
+        return wn.synset_from_pos_and_offset(self.pos, self.wn_offset)
 
     def __str__(self):
-        return self.tachygraph
+        return f"{self.pos}-{self.wn_offset}"
+
+    objects = SynsetDefManager()
 
     class Meta:
-        unique_together = ('lemma', 'iso_lang', 'pos_tag')
+        verbose_name = "synset definition"
+        unique_together = ("pos", "wn_offset")

@@ -1,5 +1,6 @@
 .secrets/
 dev-m21-out/
+example-texts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

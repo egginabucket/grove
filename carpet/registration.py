@@ -1,83 +1,101 @@
 import os
+import warnings
+from dataclasses import dataclass, field
+
 import yaml
-from django.db.utils import IntegrityError
 from django.conf import settings
-from language.models import SpacyLangModel
-from carpet.base import AbstractPhrase, Depth
-from carpet.models import Phrase, PhraseComposition, Term, parse_term_kwargs
+from django.db.utils import IntegrityError
+from jangle.models import LanguageTag
+from nltk.corpus import wordnet2021
+from nltk.corpus.reader import Synset, WordNetCorpusReader
+from yaml.error import MarkedYAMLError
+
+from carpet.models import Phrase, SynsetDef
 from carpet.parser import StrPhrase
-from maas.models import LexemeTranslation
-
-def register_phrase(phrase: AbstractPhrase) -> Phrase:
-    # recursive, lexemes not supported
-    if isinstance(phrase, Phrase):
-        return phrase
-    obj = Phrase.objects.create(
-        pitch_change = phrase.pitch_change,
-        multiplier = phrase.multiplier,
-        suffix = phrase.suffix,
-        count = phrase.count,
-        lexeme = getattr(phrase, 'lexeme', None),
-    )
-    for i, child in enumerate(phrase.children):
-        PhraseComposition.objects.create(
-            parent = obj,
-            child = register_phrase(child),
-            index = i,
-            has_braces = phrase.has_braces,
-        )
-    return obj
 
 
-def register_dictionary(path: str, lang_m: SpacyLangModel):
-    for subpath in sorted(os.listdir(path)):
-        full_path = os.path.join(path, subpath)
-        if os.path.isdir(full_path):
-            register_dictionary(full_path, lang_m)
-        elif os.path.isfile(full_path) and full_path.endswith('.yaml'):
-            with open(full_path) as f:
-                if subpath.split('.')[0] == '0-lexical-synonyms':
-                    # terms = []
-                    for lexeme_word, tachys in yaml.load(f.read(), settings.YAML_LOADER).items():
+@dataclass
+class DictionaryLoader:
+    lang: LanguageTag
+    wn: WordNetCorpusReader
+    registered_paths: list[str] = field(default_factory=list)
+
+    def register(self, path: str):
+        if path in self.registered_paths:
+            return
+        if os.path.isdir(path):
+            for subpath in os.listdir(path):
+                self.register(os.path.join(path, subpath))
+        elif os.path.isfile(path):
+            base_name = os.path.basename(path)
+            if base_name.split(os.extsep)[-1] != "yaml":
+                warnings.warn(f"skipping file {path}")
+                return
+            with open(path) as f:
+                try:
+                    defs: dict = yaml.load(f.read(), settings.YAML_LOADER)
+                except MarkedYAMLError as e:
+                    raise ValueError(f"invalid yaml file at {path}") from e
+                try:
+                    requirements = defs.pop("requires")
+                except KeyError:
+                    raise ValueError(f"{path} missing requirements")
+                for requirement in requirements:
+                    requirement_path = os.path.join(
+                        os.path.dirname(path),
+                        os.extsep.join([requirement, "yaml"]),
+                    )
+                    self.register(requirement_path)
+                for phrase, synset_names in defs.items():
+                    phrase: str
+                    synset_names: list[str]
+                    carpet_phrase = StrPhrase(self.lang, self.wn, phrase)
+                    try:
+                        phrase_obj = carpet_phrase.save()
+                    except Exception as e:
+                        raise ValueError(f"at '{path}'") from e
+                    for name in synset_names:
                         try:
-                            lexeme = LexemeTranslation.objects.get(word=lexeme_word, iso_lang=lang_m.iso_lang,).lexeme
-                        except Exception as e:
-                            raise ValueError(f"lexeme '{lexeme_word}' from '{full_path}' raised {e}")
-                        #phrase = apply_model_phrase(iso_lang, Phrase.objects.create(lexeme=lexeme))
-                        phrase, _  = Phrase.objects.get_or_create(lexeme=lexeme)
-                        for tachy in tachys:
-                            term = Term(
-                                phrase = phrase,
-                                source_file = full_path,
-                                **parse_term_kwargs(lang_m, tachy, True, True)
+                            synset: Synset = self.wn.synset(name)
+                        except ValueError as e:
+                            raise ValueError(f"synset '{name}'") from e
+                        if synset.name() != name:
+                            warnings.warn(
+                                f"given name '{name}' at {path} "
+                                f"does not match {synset}"
                             )
-                            # terms.append(term)
-                            try:
-                                term.save()
-                            except IntegrityError as e:
-                                raise ValueError(f"term '{tachy}' (lexical synonym) raised {e}")
-                    # Term.objects.bulk_create(terms)
-                else:
-                    defs = yaml.load(f.read(), settings.YAML_LOADER)
-                    for tachy, phrase in defs.items():
-                        carpet_phrase = StrPhrase(lang_m, phrase)
-                        carpet_phrase.extend(Depth.VOCAB, False)
-                        term = Term(
-                            phrase = register_phrase(carpet_phrase),
-                            source_file = full_path,
-                            **parse_term_kwargs(lang_m, tachy, True, True),
+                        try:
+                            def_ = SynsetDef.objects.get_from_synset(synset)
+                            raise IntegrityError(
+                                f"synset {synset} at {path} "
+                                f"already defined at {def_.source_file}"
+                            )
+                        except SynsetDef.DoesNotExist:
+                            pass
+                        def_ = SynsetDef(
+                            phrase=phrase_obj,
+                            pos=synset.pos(),
+                            wn_offset=synset.offset(),
+                            source_file=path,
                         )
                         try:
-                            term.save()
+                            def_.save()
                         except IntegrityError as e:
-                            raise ValueError(f"term '{tachy}' raised {e}")
-        else: print(f"skipping '{full_path}'")
+
+                            raise IntegrityError(
+                                f"synset def '{name}' at {path}"
+                            ) from e
+        else:
+            raise ValueError(f"invalid path {path}")
+        self.registered_paths.append(path)
 
 
 def register_dictionaries(clear=True):
     if clear:
-        Phrase.objects.all().delete() # phrases cascade
+        Phrase.objects.all().delete()  # phrases cascade
+    wordnet2021.ensure_loaded()
     for dict_props in settings.DICTIONARIES:
-        iso_lang = SpacyLangModel.get_from_name(dict_props['lang'])
-        iso_lang.nlp
-        register_dictionary(dict_props['path'], iso_lang)
+        path = dict_props["path"]
+        lang = LanguageTag.objects.get_from_str(dict_props["lang"])
+        loader = DictionaryLoader(lang, wordnet2021)  # type: ignore
+        loader.register(path)
