@@ -34,7 +34,6 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "jangle",
-    #'language',
     "maas",
     "carpet",
     "translator",

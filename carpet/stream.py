@@ -13,7 +13,7 @@ from nltk.corpus import wordnet2021
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 from carpet.parser import StrPhrase
 from maas.models import Lexeme
-from maas.music import HALF_MAPPINGS, DurationMode, MaasMusicalContext
+from maas.music import KIRA_SIZES, SizeMode, MaasMusicalContext
 from maas.utils import EN, lexeme_from_en
 
 # https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
@@ -70,7 +70,7 @@ class CarpetContext(MaasMusicalContext):
             (
                 counting_note.duration,
                 counting_note.articulations,
-            ) = self.duration_mappings[DurationMode.QUARTER]
+            ) = self.sizes[SizeMode.MEDIUM]
             count_stream.repeatAppend(counting_note, phrase.count)
             stream.append(count_stream)
         if phrase.count == 0 or phrase.suffix == Suffix.NOT:
@@ -87,9 +87,10 @@ def str_to_score(
     phrase_str: str,
     lang=EN,
     add_lyrics=True,
-    key=settings.DEFAULT_KEY,
+    *args,
+    **kwargs,
 ) -> Score:
-    ctx = CarpetContext(key, HALF_MAPPINGS)
+    ctx = CarpetContext(*args, **kwargs)
     if add_lyrics:
         ctx.lyrics_lang = lang
     phrase = StrPhrase(lang, wordnet2021, phrase_str)  # type: ignore

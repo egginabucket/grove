@@ -1,3 +1,11 @@
 from django.contrib import admin
+from translator import models
 
-# Register your models here.
+admin.site.register(
+    [
+        models.GoogleLanguage,
+        models.SpacyLanguage,
+        models.SpacyModelSize,
+        models.SpacyModelType,
+    ]
+)

@@ -1,12 +1,10 @@
 from django.db import models
 from jangle.models import LanguageTag
-from maas.music import FLEX_NOTE_RE, AbstractFlexNote, Tone, DurationMode
+from maas.music import FLEX_NOTE_RE, AbstractFlexNote, Tone, SizeMode
 
 
 class FlexNote(models.Model, AbstractFlexNote):
-    duration_mode = models.CharField(
-        choices=DurationMode.choices, max_length=1
-    )
+    size_mode = models.CharField(choices=SizeMode.choices, max_length=1)
     tone = models.CharField(choices=Tone.choices, max_length=1)
     degree = models.SmallIntegerField(default=0)
     is_ghosted = models.BooleanField(default=False)
@@ -46,7 +44,7 @@ class Lexeme(models.Model):
         return self.translations.get(lang=lang).word
 
     def __str__(self):
-        return self.translate(LanguageTag.objects.get_from_str('en'))
+        return self.translate(LanguageTag.objects.get_from_str("en"))
 
 
 class LexemeTranslation(models.Model):

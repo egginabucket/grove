@@ -32,24 +32,31 @@ class Tone(models.TextChoices):
     LOWER_SAT = "L", "lower satellite"
 
 
-class DurationMode(models.TextChoices):
-    WHOLE = "1", "1/1 note"
-    QUARTER = "4", "1/4 note"
-    STACCATO_QUARTER = ".", "staccato 1/4 note"
+class SizeMode(models.TextChoices):
+    """Includes durations and articulations."""
+
+    LARGE = "1", "large (whole) note"
+    MEDIUM = "4", "medium (1/4) note"
+    SMALL = ".", "small (staccato 1/4) note"
 
 
-DurationMappings = dict[DurationMode, Tuple[Duration, list[Articulation]]]
+SizeMappings = dict[SizeMode, Tuple[Duration, list[Articulation]]]
 
 
-DEFAULT_DURATION_MAPPINGS: DurationMappings = {
-    DurationMode.WHOLE: (Duration("whole"), []),
-    DurationMode.QUARTER: (Duration("quarter"), []),
-    DurationMode.STACCATO_QUARTER: (Duration("quarter"), [Staccato()]),
+ORIGINAL_SIZES: SizeMappings = {
+    SizeMode.LARGE: (Duration("whole"), []),
+    SizeMode.MEDIUM: (Duration("quarter"), []),
+    SizeMode.SMALL: (Duration("quarter"), [Staccato()]),
 }
-HALF_MAPPINGS: DurationMappings = {
-    DurationMode.WHOLE: (Duration("half"), []),
-    DurationMode.QUARTER: (Duration("quarter"), []),
-    DurationMode.STACCATO_QUARTER: (Duration("eighth"), []),
+HALVED_SIZES: SizeMappings = {
+    SizeMode.LARGE: (Duration("half"), []),
+    SizeMode.MEDIUM: (Duration("quarter"), []),
+    SizeMode.SMALL: (Duration("eighth"), []),
+}
+KIRA_SIZES: SizeMappings = {
+    SizeMode.LARGE: (Duration("half"), []),
+    SizeMode.MEDIUM: (Duration("quarter"), []),
+    SizeMode.SMALL: (Duration("quarter"), [Staccato()]),
 }
 
 
@@ -57,7 +64,7 @@ FLEX_NOTE_RE = re.compile(
     r"(?P<ghosted>%s)?(?P<duration_mode>[%s])(?P<tone>[%s])(?P<degree>[+-]\d+)?"
     % (
         re.escape(GHOSTED_TOKEN),
-        re.escape("".join(DurationMode.values)),
+        re.escape("".join(SizeMode.values)),
         "".join(Tone.values),
     )
 )
@@ -66,9 +73,7 @@ FLEX_NOTE_RE = re.compile(
 @dataclass
 class MaasMusicalContext:
     key: Key = settings.DEFAULT_KEY
-    duration_mappings: DurationMappings = field(
-        default_factory=(lambda: DEFAULT_DURATION_MAPPINGS)
-    )
+    sizes: SizeMappings = field(default_factory=(lambda: KIRA_SIZES))
     upper_sat_degree = 4
     lower_sat_degree = 4
     phrase_down_degree = -2
@@ -102,14 +107,14 @@ class MaasMusicalContext:
 
 class AbstractFlexNote:
     tone = Tone.NUCLEUS
-    duration_mode = DurationMode.QUARTER
+    size_mode = SizeMode.MEDIUM
     degree = 0
     is_ghosted = False
 
     def from_match(self, match: re.Match[str]) -> None:
         groups = match.groupdict("")
         self.is_ghosted = bool(groups["ghosted"])
-        self.duration_mode = DurationMode(groups["duration_mode"])
+        self.size_mode = SizeMode(groups["duration_mode"])
         self.tone = groups["tone"]
         if degree := groups["degree"]:
             self.degree = int(degree)
@@ -117,7 +122,7 @@ class AbstractFlexNote:
             self.degree = 0
 
     def __str__(self):
-        self_str = self.duration_mode + str(self.tone)
+        self_str = self.size_mode + str(self.tone)
         if self.is_ghosted:
             self_str = GHOSTED_TOKEN + self_str
         if self.degree:
@@ -144,9 +149,7 @@ class AbstractFlexNote:
     def get_note(self, ctx: MaasMusicalContext) -> Note:
         pitch = self.get_pitch(ctx)
         note = Note(pitch)
-        note.duration, note.articulations = ctx.duration_mappings[
-            self.duration_mode
-        ]
+        note.duration, note.articulations = ctx.sizes[self.size_mode]
         if self.is_ghosted:
             pass
         return note

@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-from functools import cached_property
 from typing import Any, Optional, Sequence
 
 import requests
-import spacy
-import yaml
 from django.conf import settings
 from django.db import models
 from google.cloud import translate
@@ -13,7 +10,6 @@ from jangle.models import ISOLanguage, LanguageTag
 from jangle.utils import BatchedCreateManager
 from spacy.cli._util import SDIST_SUFFIX, WHEEL_SUFFIX
 from spacy.cli.download import download_model
-from spacy.language import Language
 
 
 class GoogleLanguageManager(BatchedCreateManager['GoogleLanguage']):
@@ -147,10 +143,6 @@ class SpacyLanguage(models.Model):
     @property
     def full_name(self) -> str:
         return f"{self.name}-{self.package_version}"
-
-    @cached_property
-    def nlp(self) -> Language:
-        return spacy.load(self.name)
 
     @property
     def docs_url(self) -> str:
