@@ -46,12 +46,6 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [PyPI](https://pypi.org/project/nltk/)
 - [Source](https://github.com/nltk/nltk)
 
-### pako
-
-- [Official Site](https://nodeca.github.io/pako/)
-- [NPM](https://www.npmjs.com/package/pako)
-- [Source](https://github.com/nodeca/pako)
-
 ### Redis
 
 - [Official Site](https://redis.io/)
