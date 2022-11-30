@@ -12,43 +12,65 @@ from spacy.cli._util import SDIST_SUFFIX, WHEEL_SUFFIX
 from spacy.cli.download import download_model
 
 
-class GoogleLanguageManager(BatchedCreateManager['GoogleLanguage']):
-    def register(self, clear=True, batch_size=64, client: Optional[translate.TranslationServiceClient] = None, location='global'):
+class GoogleLanguageManager(BatchedCreateManager["GoogleLanguage"]):
+    def register(
+        self,
+        clear=True,
+        batch_size=64,
+        client: Optional[translate.TranslationServiceClient] = None,
+        location="global",
+    ):
         if clear:
             self.all().delete()
         if not client:
             client = translate.TranslationServiceClient()
-        parent = f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{location}"
-        resp = client.get_supported_languages(
-            display_language_code=str(LanguageTag.objects.native()), parent=parent)
-        self.batched_create((self.model(
-            lang=LanguageTag.objects.get_or_create_from_str(
-                lang.language_code),
-            display_name=lang.display_name,
-            supports_source=lang.support_source,
-            supports_target=lang.support_target,
-        ) for lang in resp.languages), batch_size)  # type: ignore
+        parent = (
+            f"projects/{settings.GOOGLE_CLOUD_PROJECT_ID}/locations/{location}"
+        )
+
+        def generate():
+            resp = client.get_supported_languages(
+                display_language_code=str(LanguageTag.objects.native().lang),
+                parent=parent,
+            )
+            for google_lang in resp.languages:  # type: ignore
+                lang, _ = LanguageTag.objects.get_or_create_from_str(
+                    google_lang.language_code
+                )
+                yield self.model(
+                    lang=lang,
+                    display_name=google_lang.display_name,
+                    supports_source=google_lang.support_source,
+                    supports_target=google_lang.support_target,
+                )
+
+        self.batched_create(generate(), batch_size)  # type: ignore
 
 
 class GoogleLanguage(models.Model):
     """Information on a language regarding use with
     the Google Cloud Translate API.
     """
-    language_tag = models.ForeignKey(LanguageTag, on_delete=models.CASCADE)
-    display_name = models.CharField(max_length=75)
+
+    lang = models.ForeignKey(LanguageTag, on_delete=models.CASCADE)
+    display_name = models.CharField(max_length=254)
     supports_source = models.BooleanField()
     supports_target = models.BooleanField()
 
-    objects = BatchedCreateManager()
+    objects = GoogleLanguageManager()
+
+    def __str__(self) -> str:
+        return self.display_name
 
     class Meta:
-        verbose_name = 'Google Cloud Translate API language'
+        verbose_name = "Google Cloud Translate API language"
 
 
 class SpacyModelSize(models.Model):
-    abbr = models.CharField('abbreviation', max_length=12, unique=True)
+    abbr = models.CharField("abbreviation", max_length=12, unique=True)
     scale = models.PositiveSmallIntegerField(
-        'small-to-large scale', unique=True)
+        "small-to-large scale", unique=True
+    )
     name = models.CharField(max_length=126, unique=True)
 
     def __str__(self):
@@ -56,7 +78,7 @@ class SpacyModelSize(models.Model):
 
 
 class SpacyModelType(models.Model):
-    abbr = models.CharField('abbreviation', max_length=12, unique=True)
+    abbr = models.CharField("abbreviation", max_length=12, unique=True)
 
     def __str__(self):
         return self.abbr
@@ -67,33 +89,35 @@ def parse_spacy_model_kwargs(model_name: str, as_objs: bool) -> dict[str, Any]:
     into kwargs for querying `SpacyLangModel`.
     """
     kwargs = dict()
-    if '-' in model_name:
-        components = model_name.split('-')
+    if "-" in model_name:
+        components = model_name.split("-")
         model_name = "".join(components[:-1])
-        kwargs['package_version'] = components[-1]
+        kwargs["package_version"] = components[-1]
 
-    components = model_name.split('_')
+    components = model_name.split("_")
 
-    kwargs['iso_lang'] = ISOLanguage.objects.get_from_ietf(
-        components.pop(0))
+    kwargs["iso_lang"] = ISOLanguage.objects.get_from_ietf(components.pop(0))
 
-    kwargs['model_size__abbr'] = components.pop(-1)
-    kwargs['genre'] = components.pop(-1)
+    kwargs["model_size__abbr"] = components.pop(-1)
+    kwargs["genre"] = components.pop(-1)
     if len(components):
-        kwargs['model_type__abbr'] = components.pop(0)
+        kwargs["model_type__abbr"] = components.pop(0)
     if len(components):
         raise ValueError(
-            f"could not resolve model name '{model_name}' with extra componnts {components}")
+            f"could not resolve model name '{model_name}' with extra componnts {components}"
+        )
     if as_objs:
-        kwargs['model_size'] = SpacyModelSize.objects.get(
-            abbr=kwargs.pop('model_size__abbr'))
-        if 'model_type__abbr' in kwargs:
-            kwargs['model_type'] = SpacyModelType.objects.get(
-                abbr=kwargs.pop('model_type__abbr'))
+        kwargs["model_size"] = SpacyModelSize.objects.get(
+            abbr=kwargs.pop("model_size__abbr")
+        )
+        if "model_type__abbr" in kwargs:
+            kwargs["model_type"] = SpacyModelType.objects.get(
+                abbr=kwargs.pop("model_type__abbr")
+            )
     return kwargs
 
 
-class SpacyLanguageQuerySet(models.QuerySet['SpacyLanguage']):
+class SpacyLanguageQuerySet(models.QuerySet["SpacyLanguage"]):
     def get_from_name(self, name: str) -> SpacyLanguageQuerySet:
         return self.filter(**parse_spacy_model_kwargs(name, False))
 
@@ -103,10 +127,10 @@ class SpacyLanguageQuerySet(models.QuerySet['SpacyLanguage']):
         return self.filter(iso_lang=lang.lang.iso_lang)
 
     def largest(self) -> Optional[SpacyLanguage]:
-        return self.order_by('-model_size__scale').first()
+        return self.order_by("-model_size__scale").first()
 
 
-class SpacyLanguageManager(models.Manager['SpacyLanguage']):
+class SpacyLanguageManager(models.Manager["SpacyLanguage"]):
     def get_queryset(self) -> SpacyLanguageQuerySet:
         return SpacyLanguageQuerySet(self.model, using=self._db)
 
@@ -121,11 +145,12 @@ class SpacyLanguageManager(models.Manager['SpacyLanguage']):
 
 
 class SpacyLanguage(models.Model):
-    """Represents the core metadata of a SpaCy language model.
-    """
+    """Represents the core metadata of a SpaCy language model."""
+
     iso_lang = models.ForeignKey(ISOLanguage, on_delete=models.CASCADE)
     model_type = models.ForeignKey(
-        SpacyModelType, null=True, on_delete=models.PROTECT)
+        SpacyModelType, null=True, on_delete=models.PROTECT
+    )
     genre = models.CharField(max_length=12)
     model_size = models.ForeignKey(SpacyModelSize, on_delete=models.PROTECT)
     package_version = models.CharField(max_length=126)
@@ -133,12 +158,17 @@ class SpacyLanguage(models.Model):
 
     @property
     def name(self) -> str:
-        return '_'.join(filter(None, [
-            self.iso_lang.ietf,
-            self.model_type and self.model_type.abbr,
-            self.genre,
-            self.model_size.abbr
-        ]))
+        return "_".join(
+            filter(
+                None,
+                [
+                    self.iso_lang.ietf,
+                    self.model_type and self.model_type.abbr,
+                    self.genre,
+                    self.model_size.abbr,
+                ],
+            )
+        )
 
     @property
     def full_name(self) -> str:
@@ -153,11 +183,14 @@ class SpacyLanguage(models.Model):
         return f"https://raw.githubusercontent.com/explosion/spacy-models/master/meta/{self.full_name}.json"
 
     def download(self, sdist=False, *user_pip_args: Sequence[str]):
-        download_model("{m}-{v}/{m}-{v}{s}#egg={m}=={v}".format(
-            m=self.name,
-            v=self.package_version,
-            s=SDIST_SUFFIX if sdist else WHEEL_SUFFIX,
-        ), *user_pip_args)
+        download_model(
+            "{m}-{v}/{m}-{v}{s}#egg={m}=={v}".format(
+                m=self.name,
+                v=self.package_version,
+                s=SDIST_SUFFIX if sdist else WHEEL_SUFFIX,
+            ),
+            *user_pip_args,
+        )
         self.downloaded = True
         self.save()
 
@@ -171,5 +204,9 @@ class SpacyLanguage(models.Model):
 
     class Meta:
         unique_together = (
-            'iso_lang', 'model_type', 'genre',
-            'model_size', 'package_version')
+            "iso_lang",
+            "model_type",
+            "genre",
+            "model_size",
+            "package_version",
+        )

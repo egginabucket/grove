@@ -9,7 +9,6 @@ except ImportError:
     from yaml import SafeLoader
 
 from dotenv import load_dotenv
-
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -118,6 +117,7 @@ REST_FRAMEWORK = {
     ]
 }
 
+WORDNET_NAME = "wordnet2021"
 YAML_LOADER = SafeLoader
 SPACY_PACKAGES = [
     "en_core_web_sm",

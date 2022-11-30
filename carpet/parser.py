@@ -1,28 +1,27 @@
 from typing import Any, Generator, Optional
 
+from jangle.models import LanguageTag
 from nltk.corpus import WordNetCorpusReader
 
 from carpet.base import (
-    OPEN_CHAR,
     CLOSE_CHAR,
-    PRIMARY_OPEN_CHAR,
-    PRIMARY_CLOSE_CHAR,
     COUNT_CHAR,
     MULTIPLIER_CHAR,
+    OPEN_CHAR,
+    PRIMARY_CLOSE_CHAR,
+    PRIMARY_OPEN_CHAR,
     SYNSET_CHAR,
     AbstractPhrase,
-    BasePhrase,
     PitchChange,
     Suffix,
 )
-from jangle.models import LanguageTag
 from carpet.models import Phrase, PhraseComposition, SynsetDef
-from maas.models import Lexeme, LexemeTranslation
+from carpet.wordnet import wordnet
+from maas.models import LexemeTranslation
 
 
 class StrPhrase(AbstractPhrase):
     lang: LanguageTag
-    wn: WordNetCorpusReader
     phrase_str: str = ""
     is_synset_linked = False
 
@@ -39,11 +38,8 @@ class StrPhrase(AbstractPhrase):
                     f"lexeme '{self.phrase_str}'"
                 ) from e
 
-    def __init__(
-        self, lang: LanguageTag, wn: WordNetCorpusReader, phrase=""
-    ) -> None:
+    def __init__(self, lang: LanguageTag, phrase="") -> None:
         self.lang = lang
-        self.wn = wn
         self.phrase_str = phrase.strip()
         if self.phrase_str:
             self._check_lexeme()
@@ -53,14 +49,14 @@ class StrPhrase(AbstractPhrase):
             return
         if self.is_synset_linked:
             try:
-                synset = self.wn.synset(self.phrase_str)
+                synset = wordnet.synset(self.phrase_str)
                 yield SynsetDef.objects.get_from_synset(synset).phrase
             except SynsetDef.DoesNotExist as e:
                 raise SynsetDef.DoesNotExist(
                     f"undefined synset '{self.phrase_str}'"
                 ) from e
             return
-        child = StrPhrase(self.lang, self.wn)
+        child = StrPhrase(self.lang)
         depth = 0
         primary_depth = 0
         is_multiplier = False
@@ -131,7 +127,7 @@ class StrPhrase(AbstractPhrase):
                         child.count *= int(count_str)
                     child._check_lexeme()
                     yield child
-                child = StrPhrase(self.lang, self.wn)
+                child = StrPhrase(self.lang)
                 depth = 0
                 primary_depth = 0
                 is_multiplier = False
@@ -148,7 +144,7 @@ class StrPhrase(AbstractPhrase):
             raise ValueError(
                 f"unclosed '{PRIMARY_CLOSE_CHAR}' in '{self.phrase_str}'"
             )
-        
+
     def save(self) -> Phrase:
         obj = Phrase.objects.create(
             pitch_change=self.pitch_change,

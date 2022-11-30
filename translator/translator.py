@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field
+from functools import cached_property
 from itertools import chain, islice
 from typing import Generator, Iterable, Optional, Tuple
 
@@ -6,16 +8,16 @@ from jangle.models import LanguageTag
 from music21.note import Rest
 from music21.spanner import Slur
 from music21.stream.base import Score, Stream
-from nltk.corpus import wordnet2021, wordnet_ic
 from nltk.corpus.reader import Synset, WordNetCorpusReader
 from spacy import load
 from spacy.glossary import GLOSSARY
 from spacy.language import Language
-from spacy.tokens import Span, Token
-
+from spacy.tokens import Span, Token, Doc
+from maas.music import MaasContext
+from carpet.speech import CarpetSpeech
 from carpet.base import AbstractPhrase, BasePhrase, Suffix
+from carpet.wordnet import wordnet
 from carpet.models import SynsetDef
-from carpet.stream import CarpetContext
 from maas.utils import EN, lexeme_from_en
 from translator.models import SpacyLanguage
 
@@ -31,7 +33,90 @@ PLACE = lexeme_from_en("place")
 TALK = lexeme_from_en("talk")
 THING = lexeme_from_en("thing")
 TIME = lexeme_from_en("time")
+THIS = lexeme_from_en("this")
+THAT = lexeme_from_en("that")
 
+
+SPECIAL_ENTS = {
+    "DATE",
+    "TIME",
+    "PERCENT",
+    "MONEY",
+    "CARDINAL",
+}  # TODO
+ENT_FALLBACKS = {
+    "PERSON": BasePhrase(lexeme=PERSON),
+    "NORP": BasePhrase([BasePhrase(lexeme=GROUP), BasePhrase(lexeme=PERSON)]),
+    "ORG": BasePhrase(lexeme=HOUSE),
+    "LOC": BasePhrase(lexeme=PLACE),
+    "GPE": BasePhrase(lexeme=PLACE),
+    "PRODUCT": BasePhrase(lexeme=THING),
+    "EVENT": BasePhrase([BasePhrase(lexeme=THING), BasePhrase(lexeme=TIME)]),
+    "LANGUAGE": BasePhrase(
+        [BasePhrase(lexeme=TALK), BasePhrase(lexeme=HOUSE)]
+    ),
+}
+"""Fallback phrases for named entities if definitions cannot be found."""
+DEP_ORDERING = [
+    "mark",
+    "prep",
+    "nsubj",
+    "possessive",
+    "poss",  # ?
+    "aux",
+    "det",
+    "ROOT",
+    "compound",
+    "pcomp",
+    "amod",
+    "attr",
+    "ag",  # de
+    "conj",
+    "cj",  # de
+    "rcmod",
+    "relcl",
+    "advmod",
+    "advcl",
+    "dative",
+    "pobj",
+    "dobj",
+    "acomp",
+    "ccomp",
+    "xcomp",
+    "appos",
+    "dep",
+    # de
+    "app",
+    "mo",
+    "ag",
+    "cj",
+    "app",
+    "punct",
+]
+"""Ordering of a token's children in the final stream,
+based on dependency relations.
+Includes the token itself as 'ROOT'.
+"""
+NEUTRAL_DEPS = {
+    "case",
+    "acl",
+    "npadvmod",
+    "advmod",
+    "amod",
+    "prep",
+    "mo",
+    "neg",
+    "nummod",
+    "ng",
+    "nmc",
+}
+"""Dependency relations that don't denote a shift in the nucleus tone
+(phrase_up is not called)"""
+UP_DEPS = {"aux"}  # TODO: remove
+NEG_DEPS = {"neg", "ng"}  # de
+ALT_WORDNETS = {
+    "ita": ["ita_iwn"],
+}
 
 _spacy_cache: dict[str, Language] = {}
 
@@ -65,22 +150,26 @@ def related_synsets(
     synset: Synset,
     hypernym_search_depth: int,
     hyponym_search_depth: int,
-) -> Generator[Synset, None, None]:
+    cur_depth=0
+) -> Generator[Tuple[Synset, int], None, None]:
     """Navigates hypernyms & hyponyms recursively"""
-    yield synset
+    yield synset, cur_depth
+    cur_depth += 1
     if hypernym_search_depth > 0:
         for hypernym in synset.hypernyms():
             yield from related_synsets(
                 hypernym,
-                hypernym_search_depth,
-                hyponym_search_depth - 1,
+                hypernym_search_depth - 1,
+                hyponym_search_depth,
+                cur_depth
             )
     if hyponym_search_depth > 0:
         for hyponym in synset.hyponyms():
             yield from related_synsets(
                 hyponym,
-                hypernym_search_depth - 1,
-                hyponym_search_depth,
+                hypernym_search_depth,
+                hyponym_search_depth - 1,
+                cur_depth
             )
 
 
@@ -91,137 +180,90 @@ def find_related_defined_synset(
     hyponym_search_depth=1,
 ) -> Optional[Synset]:
     best = None
-    largest_similarity = 0.0
+    lowest_depth = -1
     for synset in synsets:
-        for related in related_synsets(
+        for related, depth in related_synsets(
             synset, hypernym_search_depth, hyponym_search_depth
         ):
             if not SynsetDef.objects.from_synset(related).exists():
                 continue
-            #similarity = synset.lin_similarity(related, ic)
-            similarity = synset.path_similarity(related) or 0.0
-            if similarity > largest_similarity:
+            # similarity = synset.lin_similarity(related, ic)
+            #similarity = synset.path_similarity(related) or 0.0
+            if lowest_depth != -1 and depth < lowest_depth:
                 best = related
-                largest_similarity = similarity
+                lowest_depth = depth
     return best
 
 
-class TranslatorContext(CarpetContext):
-    text_lang: LanguageTag
-    wn: WordNetCorpusReader
-    wn_ic: dict
-    wn_lang: str
-    sub_rel_ents = False
-    gender_pronouns = True
-    peri_rest = Rest("whole")
-    comm_rest = Rest("quarter")
-    max_l_grouping = 2
-    max_r_grouping = 2
-    hypernym_search_depth = 3
-    hyponym_search_depth = 1
-    _translated_tokens: set[Token] = set()
-    _ent_phrases: dict[Span, AbstractPhrase] = {}
-    _skipped_tokens: list[Token] = []
+@dataclass
+class TranslatorContext(MaasContext):
+    wn_lang = "eng"
+    sub_rel_ents: bool = False
+    max_l_grouping: int = 2
+    max_r_grouping: int = 2
+    hypernym_search_depth: int = 3
+    hyponym_search_depth: int = 1
+    wn_ic: dict = field(default_factory=dict)
 
-    SPECIAL_ENTS = {
-        "DATE",
-        "TIME",
-        "PERCENT",
-        "MONEY",
-        "CARDINAL",
-    }  # TODO
-    ENT_FALLBACKS = {
-        "PERSON": BasePhrase(lexeme=PERSON),
-        "NORP": BasePhrase(
-            [BasePhrase(lexeme=GROUP), BasePhrase(lexeme=PERSON)]
-        ),
-        "ORG": BasePhrase(lexeme=HOUSE),
-        "LOC": BasePhrase(lexeme=PLACE),
-        "GPE": BasePhrase(lexeme=PLACE),
-        "PRODUCT": BasePhrase(lexeme=THING),
-        "EVENT": BasePhrase(
-            [BasePhrase(lexeme=THING), BasePhrase(lexeme=TIME)]
-        ),
-        "LANGUAGE": BasePhrase(
-            [BasePhrase(lexeme=TALK), BasePhrase(lexeme=HOUSE)]
-        ),
-    }
-    """Fallback phrases for named entities if definitions cannot be found."""
-    DEP_ORDERING = [
-        "mark",
-        "prep",
-        "nsubj",
-        "possessive",
-        "poss",  # ?
-        "aux",
-        "det",
-        "ROOT",
-        "compound",
-        "pcomp",
-        "amod",
-        "attr",
-        "ag",  # de
-        "conj",
-        "cj",  # de
-        "advmod",
-        "advcl",
-        "dative",
-        "pobj",
-        "dobj",
-        "appos",
-        "app",  # de
-        "dep",
-        #de
-        "mo",
-        "ag",
-        "cj",
-        "app",
-        "punct",
-    ]
-    """Ordering of a token's children in the final stream,
-    based on dependency relations.
-    Includes the token itself as 'ROOT'.
-    """
-    NEUTRAL_DEPS = {
-        "case",
-        "acl",
-        "npadvmod",
-        "advmod",
-        "amod",
-        "prep",
-        "mo",
-        "neg",
-        "nummod",
-        "ng",
-        "nmc",
-    }
-    """Dependency relations that don't denote a shift in the nucleus tone
-    (phrase_up is not called)"""
-    UP_DEPS = set() # TODO: remove
-    NEG_DEPS = {"neg", "ng"}  # de
+
+class Translation(CarpetSpeech):
+    ctx: TranslatorContext
+    span: Span
+    stream: Stream
+
+    translated_tokens: set[Token]
+    ent_phrases: dict[Span, AbstractPhrase]
+    skipped_tokens: list[Token]
+    _first_det_used = False
+
+    def __init__(self, ctx: TranslatorContext, span: Span) -> None:
+        super().__init__(ctx)
+        self.span = span
+        self.stream = Stream()
+        self.translated_tokens = set()
+        self.ent_phrases = {}
+        self.skipped_tokens = []
+        self.translate_ents()
+        for token in span:
+            if token.dep_ == "ROOT":
+                self.stream.append(self.token_to_stream(token))
+                self.phrase_up()
+
+    def score(self) -> Score:
+        return self.ctx.build_score(self.span.text, self.stream)
 
     def token_groups(self, token: Token) -> Generator[list[Token], None, None]:
         for tokens in token_groups(
-            token, self.max_l_grouping, self.max_r_grouping
+            token, self.ctx.max_l_grouping, self.ctx.max_r_grouping
         ):
             for token in tokens:
-                if token in self._translated_tokens:
+                if token in self.translated_tokens:
                     continue
             yield tokens
+
+    def synsets(self, lemma: str, pos: Optional[str] = None) -> list[Synset]:
+        synsets = wordnet.synsets(lemma, pos, self.ctx.wn_lang)
+        for alt in ALT_WORDNETS.get(self.ctx.wn_lang, []):
+            if synsets:
+                break
+            synsets = wordnet.synsets(lemma, pos, alt)
+        if self.ctx.wn_lang != "eng" and not synsets:
+            synsets = wordnet.synsets(lemma, pos, "eng")
+        return synsets
 
     def potential_synset_lists(
         self, token: Token
     ) -> Generator[Tuple[list[Synset], list[Token]], None, None]:
         """Lists of directly matching synsets from various queries."""
         wn_pos = None
-        if token.pos_ in {"NOUN", "PROPN"}:
-            wn_pos = self.wn.NOUN
+        if token.pos_ in {"NOUN", "PROPN", "NUM"}:
+            wn_pos = wordnet.NOUN
         elif token.pos_ == "VERB":
-            wn_pos = self.wn.VERB
+            wn_pos = wordnet.VERB
         elif token.pos_ == "ADJ":
-            wn_pos = self.wn.ADJ  # wn also finds satellites
+            wn_pos = wordnet.ADJ  # wn also finds satellites
         elif token.pos_ == "ADV":
-            wn_pos = self.wn.ADV
+            wn_pos = wordnet.ADV
         token_texts = [
             (
                 text_to_wn_lemma(
@@ -236,14 +278,11 @@ class TranslatorContext(CarpetContext):
         # wordnet uses morph substitutions
         for text, tokens in token_texts:
             for q_token in tokens:
-                if q_token in self._translated_tokens:
+                if q_token in self.translated_tokens:
                     continue
-            yield self.wn.synsets(text, wn_pos, self.wn_lang), tokens
-            if self.wn_lang != "eng":
-                yield self.wn.synsets(text, wn_pos), tokens
-            yield self.wn.synsets(text, lang=self.wn_lang), tokens
-            if self.wn_lang != "eng":
-                yield self.wn.synsets(text), tokens
+            yield self.synsets(text, wn_pos), tokens
+            if len(tokens) > 1:
+                yield self.synsets(text), tokens
 
     def token_to_phrase_via_wn(
         self, token: Token
@@ -258,9 +297,9 @@ class TranslatorContext(CarpetContext):
         for synsets, tokens in self.potential_synset_lists(token):
             related = find_related_defined_synset(
                 synsets,
-                self.wn_ic,
-                self.hypernym_search_depth,
-                self.hyponym_search_depth,
+                self.ctx.wn_ic,
+                self.ctx.hypernym_search_depth,
+                self.ctx.hyponym_search_depth,
             )
             if related:
                 try:
@@ -274,24 +313,29 @@ class TranslatorContext(CarpetContext):
         is_skipped = False
         phrase = None
         root_m21_obj = None
-        if token in self._translated_tokens:
+        if token in self.translated_tokens:
             pass
-        elif token in chain(*self._ent_phrases):
-            for ent, ent_phrase in self._ent_phrases.items():
+        elif token in chain(*self.ent_phrases):
+            for ent, ent_phrase in self.ent_phrases.items():
                 if token in ent:
                     phrase = ent_phrase
-                    self._translated_tokens.update(iter(ent))
+                    self.translated_tokens.update(iter(ent))
                     break
         elif token.pos_ == "PUNCT":
             if token.has_morph:
                 punct_type = token.morph.get("PunctType")
                 if punct_type == ["Peri"]:
-                    # if token.text == '?': pass
-                    root_m21_obj = self.peri_rest
+                    root_m21_obj = Rest(self.ctx.peri_rest)
                 elif punct_type == ["Comm"]:
-                    root_m21_obj = self.comm_rest
+                    root_m21_obj = Rest(self.ctx.comm_rest)
                 else:
                     is_skipped = True
+        elif token.pos_ == "DET":
+            if self._first_det_used:
+                phrase = BasePhrase(lexeme=THAT)
+            else:
+                phrase = BasePhrase(lexeme=THIS)
+                self._first_det_used = True
         elif token.pos_ == "PRON":
             is_personal = "Prs" in token.morph.get("PronType")
             person = token.morph.get("Person")
@@ -299,7 +343,7 @@ class TranslatorContext(CarpetContext):
                 phrase = BasePhrase(lexeme=IT)
                 if is_personal:
                     phrase = BasePhrase([phrase, BasePhrase(lexeme=PERSON)])
-                    if self.gender_pronouns:
+                    if self.ctx.gender_pronouns:
                         if "Fem" in token.morph.get("Gender"):
                             phrase.children.append(BasePhrase(lexeme=FEMALE))
                         elif "Masc" in token.morph.get("Gender"):
@@ -316,12 +360,12 @@ class TranslatorContext(CarpetContext):
                     is_skipped = True
             else:
                 is_skipped = True
-            self._translated_tokens.add(token)
-        elif token.pos_ in {"NOUN", "PROPN", "VERB", "ADJ", "ADV"}:
+            self.translated_tokens.add(token)
+        elif token.pos_ in {"NOUN", "PROPN", "NUM", "VERB", "ADJ", "ADV"}:
             wn_phrase, tokens = self.token_to_phrase_via_wn(token)
             if wn_phrase is not None:
                 phrase = wn_phrase
-                self._translated_tokens.update(tokens)
+                self.translated_tokens.update(tokens)
             else:
                 is_skipped = True
         else:
@@ -330,15 +374,15 @@ class TranslatorContext(CarpetContext):
             if phrase is not None:
                 phrase.multiplier *= 2
         if is_skipped:
-            self._skipped_tokens.append(token)
+            self.skipped_tokens.append(token)
         else:
-            self._translated_tokens.add(token)
+            self.translated_tokens.add(token)
         child_phrase_tokens: dict[str, list[Token]] = {}
         for child in token.children:
             phrase_token = True
             if (
                 phrase is not None
-                and child not in self._translated_tokens
+                and child not in self.translated_tokens
                 and not list(child.children)
             ):
                 phrase_token = False
@@ -348,7 +392,7 @@ class TranslatorContext(CarpetContext):
                     phrase = BasePhrase([phrase], suffix=Suffix.WHAT)
                 elif child.dep_ in {"nummod", "nmc"}:
                     try:
-                        count = synsets_to_int(self.wn.synsets(child.text))
+                        count = synsets_to_int(self.synsets(child.text))
                     except ValueError:
                         count = None  # TODO: let user change?
                     phrase = BasePhrase([phrase], count=count)
@@ -361,7 +405,7 @@ class TranslatorContext(CarpetContext):
                     child_phrase_tokens[child.dep_] = [child]
 
         stream = Score()
-        for dep in self.DEP_ORDERING:
+        for dep in DEP_ORDERING:
             if dep == "ROOT":
                 if phrase is not None:
                     stream.append(self.phrase_to_stream(phrase))
@@ -369,61 +413,50 @@ class TranslatorContext(CarpetContext):
                     stream.append(root_m21_obj)
             else:
                 for token in child_phrase_tokens.get(dep, []):
-                    if dep in self.UP_DEPS:
+                    if dep in UP_DEPS:
                         self.phrase_up()
-                    elif dep not in self.NEUTRAL_DEPS:
+                    elif dep not in NEUTRAL_DEPS:
                         self.phrase_down()
                     stream.append(self.token_to_stream(token))
         return stream.flatten()
 
-    def span_to_stream(self, span: Span) -> Stream:
-        stream = Stream()
-        self.reset_phrase()
-        self._translated_tokens = set()
-        self._skipped_tokens = []
-        self._ent_phrases = {}
-
-        for ent in span.ents:
+    def translate_ents(self) -> None:
+        for ent in self.span.ents:
             ent_lemma = text_to_wn_lemma(ent.text)
-            synsets = self.wn.synsets(ent_lemma, self.wn.NOUN, self.wn_lang)
-            if self.wn_lang != "eng" and not synsets:
-                synsets = self.wn.synsets(ent_lemma, self.wn.NOUN)
+            synsets = self.synsets(ent_lemma, wordnet.NOUN)
             phrase = None
             for synset in synsets:
                 try:
                     phrase = SynsetDef.objects.get_from_synset(synset).phrase
                 except SynsetDef.DoesNotExist:
                     pass
-            if phrase is None and self.sub_rel_ents:
+            if phrase is None and self.ctx.sub_rel_ents:
                 related = find_related_defined_synset(
                     synsets,
-                    self.wn_ic,
-                    self.hypernym_search_depth,
-                    self.hyponym_search_depth,
+                    self.ctx.wn_ic,
+                    self.ctx.hypernym_search_depth,
+                    self.ctx.hyponym_search_depth,
                 )
                 if related is not None:
                     phrase = SynsetDef.objects.get_from_synset(related).phrase
-            if not phrase and ent.label_ in self.ENT_FALLBACKS:
-                phrase = self.ENT_FALLBACKS[ent.label_]
+            if not phrase and ent.label_ in ENT_FALLBACKS:
+                phrase = ENT_FALLBACKS[ent.label_]
             if phrase is not None:
-                self._ent_phrases[ent] = phrase
-        for token in span:
-            if token.dep_ == "ROOT":
-                stream.append(self.token_to_stream(token))
-                self.phrase_up()
-        return stream.flatten()
+                self.ent_phrases[ent] = phrase
 
-_ic = wordnet_ic.ic('ic-brown.dat')
-def translate(text: str, lang=EN, add_lyrics=True, *args, **kwargs) -> Score:
+
+# _ic = wordnet_ic.ic('ic-brown.dat')
+def translate(
+    ctx: TranslatorContext,
+    text: str | Doc,
+    lang=EN,
+    add_lyrics=True,
+) -> Score:
     if not (lang.lang and lang.lang.iso_lang):
         raise ValueError(f"lang {lang} does not originate from ISO-639 3")
-    ctx = TranslatorContext(*args, **kwargs)
+    ctx.wn_lang = lang.lang.iso_lang.part_3
     if add_lyrics:
         ctx.lyrics_lang = lang
-    wordnet2021.ensure_loaded()
-    ctx.wn = wordnet2021 # type: ignore
-    ctx.wn_ic = _ic
-    ctx.wn_lang = lang.lang.iso_lang.part_3
     spacy_lang = SpacyLanguage.objects.from_lang(lang).largest()
     if spacy_lang is None:
         raise ValueError(f"no spacy models downloaded for {lang}")
@@ -434,9 +467,10 @@ def translate(text: str, lang=EN, add_lyrics=True, *args, **kwargs) -> Score:
     stream = Score()
     doc = nlp(text)
     for sent in doc.sents:
-        stream.append(ctx.span_to_stream(sent))
-        print("Skipped tokens:", ctx._skipped_tokens)
-        print("Entities:", ctx._ent_phrases)
+        speech = Translation(ctx, sent)
+        stream.append(speech.stream)
+        print("Skipped tokens:", speech.skipped_tokens)
+        print("Entities:", speech.ent_phrases)
     stream = stream.flatten()
     last = stream.last()
     if isinstance(last, Rest) and len(last.lyrics) == 0:

@@ -1,6 +1,14 @@
 from django.db import models
 from jangle.models import LanguageTag
-from maas.music import FLEX_NOTE_RE, AbstractFlexNote, Tone, SizeMode
+
+from music21.stream.base import Score, Stream
+from maas.music import (
+    FLEX_NOTE_RE,
+    MaasSpeech,
+    AbstractFlexNote,
+    Tone,
+    SizeMode,
+)
 
 
 class FlexNote(models.Model, AbstractFlexNote):
@@ -39,6 +47,18 @@ class Lexeme(models.Model):
         return [
             rel.flex_note for rel in self.flex_note_through.order_by("index")  # type: ignore
         ]
+
+    def stream(self, speech: MaasSpeech, exclude_ghosted=False) -> Stream:
+        flex_notes = self.get_flex_notes()
+        if exclude_ghosted:
+            flex_notes = filter(lambda flex: not flex.is_ghosted, flex_notes)
+        notes = [flex.get_note(speech) for flex in flex_notes]
+        stream = Score(notes or speech.ctx.lexeme_fallback)
+        if speech.ctx.lyrics_lang is not None:
+            stream.notesAndRests[0].addLyric(
+                self.translate(speech.ctx.lyrics_lang), 1
+            )
+        return stream
 
     def translate(self, lang: LanguageTag) -> str:
         return self.translations.get(lang=lang).word

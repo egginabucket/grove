@@ -10,19 +10,11 @@ Maas (formerly known as Moss) is a constructed musical language, like Solresol. 
 
 - [thelanguageofmoss.com Mar 2018 archive](https://web.archive.org/web/20180311194718/http://www.thelanguageofmoss.com/)
 - [thelanguageofmoss.com Aug 2009 archive](https://web.archive.org/web/20090813110752/http://www.thelanguageofmoss.com/) - includes a mostly complete dictionary
-- [Wikipedia Article](https://en.wikipedia.org/wiki/Moss_(language\))
+- [Wikipedia Article](https://en.wikipedia.org/wiki/Moss_(language))
 
 ## Some Software Used
 
-All libraries and programs used are FOSS (free open-source software), with the exception of APIs for Google Translate and the Merriam-Webster dictionary.
-
-
-### ~~Abjad~~
-
-- [Docs](https://abjad.github.io/)
-- [PyPI](https://pypi.org/project/abjad/)
-- [Source](https://github.com/Abjad/abjad)
-
+All libraries and programs used are FOSS (free open-source software), with the exception of Google Translate, used for languages unsupported by SpaCy or the Open Multilingual Wordnet.
 
 ### Celery
 
@@ -42,40 +34,13 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [PyPI](https://pypi.org/project/gunicorn/)
 - [Source](https://github.com/benoitc/gunicorn)
 
-### ~~LilyPond~~
-
-- [Homepage](https://lilypond.org/)
-- [Source](https://git.savannah.gnu.org/gitweb/?p=lilypond.git)
-
-### MariaDB
-
-- [Homepage](https://mariadb.org/)
-- [Knowledge Base](https://mariadb.com/kb/en/)
-- [Source](https://github.com/MariaDB/server)
-
-### ~~MIDI.js~~
-
-- [Homepage](https://galactic.ink/midi-js/)
-- [Source](https://github.com/mudcube/MIDI.js)
-
-### ~~Mido~~
-
-- [Docs](https://mido.readthedocs.io/en/latest/)
-- [Source](https://github.com/mido/mido/)
-
 ### music21
 - [Homepage](https://web.mit.edu/music21/)
 - [Docs](https://web.mit.edu/music21/doc/index.html)
 - [PyPI](https://pypi.org/project/music21/)
 - [Source](https://github.com/cuthbertLab/music21/)
 
-### ~~mingus~~
-
-- [Homepage](http://bspaans.github.io/python-mingus/)
-- [PyPI](https://pypi.org/project/mingus/)
-- [Source](https://github.com/bspaans/python-mingus)
-
-### ~~Natural Language Toolkit (NLTK)~~
+### Natural Language Toolkit (NLTK)
 
 - [Official Site](https://www.nltk.org/)
 - [PyPI](https://pypi.org/project/nltk/)
@@ -87,17 +52,11 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [NPM](https://www.npmjs.com/package/pako)
 - [Source](https://github.com/nodeca/pako)
 
-### ~~quickly~~
-
-- [Official Site](https://quick-ly.info/)
-- [PyPI](https://pypi.org/project/quickly/)
-- [Source](https://github.com/frescobaldi/quickly))
-
 ### Redis
 
 - [Official Site](https://redis.io/)
 
-### Spacy
+### SpaCy
 
 - [Official Site](https://spacy.io/)
 - [PyPI](https://pypi.org/project/spacy/)

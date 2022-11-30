@@ -10,7 +10,7 @@ from jangle.models import LanguageTag
 # from language.models import PartOfSpeech
 from maas.models import Lexeme
 from carpet.base import AbstractPhrase, PitchChange, Suffix
-
+from carpet.wordnet import wordnet
 
 class Phrase(models.Model, AbstractPhrase):
     child_rels: "models.manager.RelatedManager[PhraseComposition]"
@@ -107,11 +107,15 @@ class SynsetDef(models.Model):
     )
     source_file = models.CharField(null=True, max_length=254)
 
-    def synset(self, wn: WordNetCorpusReader) -> Synset:
-        return wn.synset_from_pos_and_offset(self.pos, self.wn_offset)
+    @cached_property
+    def synset(self) -> Synset:
+        return wordnet.synset_from_pos_and_offset(self.pos, self.wn_offset)
 
-    def __str__(self):
+    def no_wn_str(self) -> str:
         return f"{self.pos}-{self.wn_offset}"
+    
+    def __str__(self) -> str:
+        return self.synset.name() # type: ignore
 
     objects = SynsetDefManager()
 
