@@ -1,6 +1,7 @@
 .secrets/
 dev-m21-out/
 example-texts/
+dictionary.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
