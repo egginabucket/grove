@@ -52,8 +52,11 @@ class Lexeme(models.Model):
         flex_notes = self.get_flex_notes()
         if exclude_ghosted:
             flex_notes = filter(lambda flex: not flex.is_ghosted, flex_notes)
-        notes = [flex.get_note(speech) for flex in flex_notes]
-        stream = Score(notes or speech.ctx.lexeme_fallback)
+        
+        if notes := [flex.get_note(speech) for flex in flex_notes]:
+            stream = Score(notes)
+        else:
+            stream = Score(speech.ctx.lexeme_fallback).flatten()
         if speech.ctx.lyrics_lang is not None:
             stream.notesAndRests[0].addLyric(
                 self.translate(speech.ctx.lyrics_lang), 1
