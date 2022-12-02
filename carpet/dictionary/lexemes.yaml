@@ -19,6 +19,7 @@ and:
   - besides.r.02 # [and, also, too]
   # - beyond.r.03
 animal: 
+  - animal.n.01
   - animal.s.01
 ass: # varies across archives
   - buttocks.n.01

@@ -48,7 +48,7 @@ class CarpetSpeech(MaasSpeech):
         if phrase.suffix == Suffix.WHAT:
             stream.append(WHAT.stream(self, True))
         stream = stream.flatten()
-        if self.ctx.slur:
+        if self.ctx.write_slurs:
             stream.insert(0, Slur(stream.elements))
         return stream
 

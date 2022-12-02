@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="/static/xmlplay/abc2svg-1.js" type="text/javascript"></script>
+    <script
+      src="/static/xmlplay/xmlplay_emb.js"
+      type="text/javascript"
+    ></script>
+    <link href="/static/style.css" rel="stylesheet" />
+    <title>Translate to Maas | Grove</title>
+    <script type="text/javascript">
+      function toggleAdvanced(checkbox) {
+        let advanced = document.getElementById("advanced");
+        if (checkbox.checked) {
+          advanced.style.display = "block";
+        } else {
+          advanced.style.display = "none";
+        }
+      }
+    </script>
+    <style type="text/css">
+      textarea {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Grove</h1>
+    <h2>Translate to Maas</h2>
+    <form method="post">
+      {% csrf_token %}
+      <textarea
+        required
+        placeholder="Type something!"
+        rows="8"
+        id="text"
+        name="text"
+        required
+      ></textarea>
+      <select required name="lang" id="lang">
+        {% for lang in langs %}
+        <option value="{{lang.text}}">{{ lang.description }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Translate</button>
+      <span>
+        <input
+          type="checkbox"
+          id="showAdvanced"
+          onchange="toggleAdvanced(this)"
+        />
+        <label for="showAdvanced"> Show advanced options</label>
+      </span>
+      <div id="advanced" style="display: none">
+        <div>
+          <input type="checkbox" name="add_lyrics" id="addLyrics" checked />
+          <label for="addLyrics">
+            Write translations for Maas lexemes as lyrics
+          </label>
+        </div>
+        <div>
+          <input type="checkbox" name="write_slurs" id="writeSlurs" checked />
+          <label for="writeSlurs"> Write slurs</label>
+        </div>
+        <div>
+          <input type="checkbox" name="sub_rel_ents" id="subRelEnts" />
+          <label for="subRelEnts">
+            Substitute related nouns for named entities
+          </label>
+        </div>
+        <div>
+          <input
+            type="checkbox"
+            name="gender_pronouns"
+            id="genderPronouns"
+            checked
+          />
+          <label for="genderPronouns"> Gender personal pronouns </label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="hyper_search_depth"
+            id="hyperSearchDepth"
+            value="4"
+            max="5"
+            min="0"
+            required
+          />
+          <label for="hyperSearchDepth"> Hypernym search depth</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="hypo_search_depth"
+            id="hypoSearchDepth"
+            value="2"
+            max="3"
+            min="0"
+            required
+          />
+          <label for="hypoSearchDepth"> Hyponym search depth</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="max_l_grouping"
+            id="maxLGrouping"
+            value="2"
+            max="4"
+            min="0"
+            required
+          />
+          <label for="maxLGrouping"> Max leftwards lemma grouping</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="max_r_grouping"
+            id="maxRGrouping"
+            value="2"
+            max="4"
+            min="0"
+            required
+          />
+          <label for="maxRGrouping"> Max rightwards lemma grouping</label>
+        </div>
+        <div>
+          <input type="text" name="key" id="musicKey" value="B" required />
+          <label for="musicKey"> Key</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="deg_offset"
+            id="degOffset"
+            value="0"
+            required
+          />
+          <label for="degOffset"> Degree offset</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="phrase_down_deg"
+            id="phraseDownDeg"
+            value="-2"
+            max="0"
+            required
+          />
+          <label for="phraseDownDeg"> Phrase down degree</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="phrase_up_deg"
+            id="phraseUpDeg"
+            value="4"
+            min="0"
+            required
+          />
+          <label for="phraseUpDeg"> Phrase up degree</label>
+        </div>
+        <div>
+          <input
+            type="text"
+            name="lexeme_fallback"
+            id="lexemeFallback"
+            value="r4"
+            min="0"
+            required
+          />
+          <label for="lexemeFallback">
+            Fallback for undefined Maas lexemes (TinyNotation)</label
+          >
+        </div>
+        <div>
+          <input
+            type="number"
+            name="peri_rest"
+            id="periRest"
+            value="4.0"
+            min="0"
+            step="0.01"
+          />
+          <label for="periRest"> Period rest</label>
+        </div>
+        <div>
+          <input
+            type="number"
+            name="comm_rest"
+            id="commRest"
+            value="1.0"
+            min="0"
+            step="0.01"
+          />
+          <label for="commRest"> Comma rest</label>
+        </div>
+      </div>
+    </form>
+    {% if abc %}
+    <div>
+      <div id="parms"></div>
+      <div class="abc">{{abc}}</div>
+    </div>
+    {% endif %}
+  </body>
+</html>

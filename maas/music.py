@@ -78,7 +78,7 @@ class MaasContext:
     lower_sat_degree = -4
     phrase_down_degree = -2
     phrase_up_degree = +4
-    slur: bool = True
+    write_slurs: bool = True
     lyrics_lang: Optional[LanguageTag] = None
     lexeme_fallback: Music21Object = Rest("half")
     """Used if no flex notes are defined for a lexeme."""

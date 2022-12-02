@@ -69,7 +69,6 @@ DEP_ORDERING = [
     "compound",
     "pcomp",
     "amod",
-    "attr",
     "ag",  # de
     "conj",
     "cj",  # de
@@ -78,6 +77,8 @@ DEP_ORDERING = [
     "advmod",
     "advcl",
     "dative",
+    "part"
+    "attr", # ?
     "pobj",
     "dobj",
     "acomp",
@@ -88,8 +89,6 @@ DEP_ORDERING = [
     # de
     "app",
     "mo",
-    "ag",
-    "cj",
     "app",
     "punct",
 ]
@@ -109,10 +108,11 @@ NEUTRAL_DEPS = {
     "nummod",
     "ng",
     "nmc",
+    "det",
 }
 """Dependency relations that don't denote a shift in the nucleus tone
 (phrase_up is not called)"""
-UP_DEPS = {"aux"}  # TODO: remove
+UP_DEPS = {"aux", "nsubj"} # TODO: figure out auxiliaries
 NEG_DEPS = {"neg", "ng"}  # de
 ALT_WORDNETS = {
     "ita": ["ita_iwn"],
@@ -150,7 +150,7 @@ def related_synsets(
     synset: Synset,
     hypernym_search_depth: int,
     hyponym_search_depth: int,
-    cur_depth=0
+    cur_depth=0,
 ) -> Generator[Tuple[Synset, int], None, None]:
     """Navigates hypernyms & hyponyms recursively"""
     yield synset, cur_depth
@@ -161,7 +161,7 @@ def related_synsets(
                 hypernym,
                 hypernym_search_depth - 1,
                 hyponym_search_depth,
-                cur_depth
+                cur_depth,
             )
     if hyponym_search_depth > 0:
         for hyponym in synset.hyponyms():
@@ -169,7 +169,7 @@ def related_synsets(
                 hyponym,
                 hypernym_search_depth,
                 hyponym_search_depth - 1,
-                cur_depth
+                cur_depth,
             )
 
 
@@ -185,13 +185,12 @@ def find_related_defined_synset(
         for related, depth in related_synsets(
             synset, hypernym_search_depth, hyponym_search_depth
         ):
-            if not SynsetDef.objects.from_synset(related).exists():
-                continue
             # similarity = synset.lin_similarity(related, ic)
-            #similarity = synset.path_similarity(related) or 0.0
-            if lowest_depth != -1 and depth < lowest_depth:
-                best = related
-                lowest_depth = depth
+            # similarity = synset.path_similarity(related) or 0.0
+            if lowest_depth == -1 or depth < lowest_depth:
+                if SynsetDef.objects.from_synset(related).exists():
+                    best = related
+                    lowest_depth = depth
     return best
 
 
@@ -201,8 +200,8 @@ class TranslatorContext(MaasContext):
     sub_rel_ents: bool = False
     max_l_grouping: int = 2
     max_r_grouping: int = 2
-    hypernym_search_depth: int = 3
-    hyponym_search_depth: int = 1
+    hypernym_search_depth: int = 4
+    hyponym_search_depth: int = 2
     wn_ic: dict = field(default_factory=dict)
 
 
@@ -262,7 +261,7 @@ class Translation(CarpetSpeech):
             wn_pos = wordnet.VERB
         elif token.pos_ == "ADJ":
             wn_pos = wordnet.ADJ  # wn also finds satellites
-        elif token.pos_ == "ADV":
+        elif token.pos in {"ADV", "PART"}:
             wn_pos = wordnet.ADV
         token_texts = [
             (
@@ -361,7 +360,7 @@ class Translation(CarpetSpeech):
             else:
                 is_skipped = True
             self.translated_tokens.add(token)
-        elif token.pos_ in {"NOUN", "PROPN", "NUM", "VERB", "ADJ", "ADV"}:
+        elif token.pos_ in {"NOUN", "PROPN", "NUM", "VERB", "ADJ", "ADV", "PART"}:
             wn_phrase, tokens = self.token_to_phrase_via_wn(token)
             if wn_phrase is not None:
                 phrase = wn_phrase
@@ -474,8 +473,11 @@ def translate(
     stream = stream.flatten()
     last = stream.last()
     if isinstance(last, Rest) and len(last.lyrics) == 0:
+        has_slur = False
         for spanner in last.getSpannerSites():
             if isinstance(spanner, Slur):
-                continue
-        stream.pop(len(stream) - 1)
+                has_slur = True
+                break
+        if not has_slur:
+            stream.pop(len(stream) - 1)
     return ctx.build_score(str(doc), stream)
