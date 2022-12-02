@@ -21,7 +21,7 @@ Hopefully there will be an actual site to visit soon,
 but until then, I might make a dockerfile if somebody bugs me enough.
 
 To install, all you need is a Python 3 virtualenv, a Postgres database, and some storage space.
-The Celery and Redis stuff is done so don't worry about that.
+The Celery and Redis stuff isn't done so don't worry about that.
 
 Install requirements:
 
