@@ -13,6 +13,7 @@ what little information of it that remains online is preserved on the Wayback Ma
 - [thelanguageofmoss.com Mar 2018 archive](https://web.archive.org/web/20180311194718/http://www.thelanguageofmoss.com/)
 - [thelanguageofmoss.com Aug 2009 archive](https://web.archive.org/web/20090813110752/http://www.thelanguageofmoss.com/) - includes a mostly complete dictionary
 - [Wikipedia Article](<https://en.wikipedia.org/wiki/Moss_(language)>)
+- [page on maas on Moore's personal site](http://jacksonmoore.net/a/maas.html)
 
 ## Installation
 
@@ -71,7 +72,7 @@ Run server:
 
 `python manage.py runserver`
 
-Go to localhost:8000/admin/translator/spacylanguage/ and save any SpaCy language models you'll be using.
+Go to http://localhost:8000/admin/translator/spacylanguage/ and save any SpaCy language models you'll be using.
 Install them with the &quot;Download SpaCy package&quot; action.
 I recommend using medium-sized models (check out https://spacy.io/models)
 
