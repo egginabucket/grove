@@ -1,13 +1,23 @@
+import subprocess
+import uuid
+
+from django.conf import settings
+from django.http import (
+    FileResponse,
+    HttpRequest,
+    HttpResponseNotAllowed,
+    JsonResponse,
+)
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponseNotAllowed, HttpRequest
-from translator.meta import get_supported_languages
-from translator.translator import TranslatorContext, translate
-from translator.forms import TranslationForm
+from django.urls import reverse
+from jangle.models import LanguageTag
 from music21.key import Key
 from music21.tinyNotation import Converter
-from jangle.models import LanguageTag
-import subprocess
-from django.conf import settings
+
+from translator.forms import TranslationForm
+from translator.meta import get_supported_languages
+from translator.translator import TranslatorContext, translate
+
 
 def index(request: HttpRequest):
     if request.method == "POST":
@@ -29,7 +39,7 @@ def index(request: HttpRequest):
                     form.cleaned_data["lexeme_fallback"], makeNotation=False
                 )
                 .parse()
-                .stream,
+                .stream.flatten(),
             )
             score = translate(
                 ctx,
@@ -37,13 +47,26 @@ def index(request: HttpRequest):
                 lang,
                 form.cleaned_data["add_lyrics"],
             )
-            path = score.write("mxl")
-            subprocess.call(["python3", settings.BASE_DIR / "xml2abc_mod.py", str(path), "-o", str(path.parent)])
-            with open(str(path).replace(".mxl", ".abc")) as f:
+            uuid4 = str(uuid.uuid4())
+            path = score.write("mxl", settings.M21_OUT_DIR / uuid4)
+            subprocess.call(
+                [
+                    "python3",
+                    settings.BASE_DIR / "xml2abc_mod.py",
+                    str(path),
+                    "-o",
+                    str(settings.M21_OUT_DIR),
+                ]
+            )
+            with open(str(path).removesuffix(".mxl") + ".abc") as f:
                 return render(
                     request,
                     "translator/index.html",
-                    {"langs": get_supported_languages(), "abc": f.read()},
+                    {
+                        "langs": get_supported_languages(),
+                        "abc": f.read(),
+                        "mxl_url": f"/mxl/{uuid4}/",  # TODO: use reverse
+                    },
                 )
         else:
             return JsonResponse(form.errors)
@@ -55,6 +78,11 @@ def index(request: HttpRequest):
     )
 
 
-def re(request):
-    print(type(request))
-    return JsonResponse({})
+def mxl(request: HttpRequest, filename):
+    filename += ".mxl"
+    response = FileResponse(
+        open(settings.M21_OUT_DIR / filename, "rb"),
+        as_attachment=True,
+        filename=filename,
+    )
+    return response
