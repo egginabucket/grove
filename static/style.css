@@ -1,6 +1,29 @@
+@import url(https://fonts.googleapis.com/css2?family=Merriweather&family=Inter);
+
 body,
-html {
+html,
+input,
+button,
+textarea,
+::placeholder {
+  font-family: 'Inter', sans-serif;
+  color: #2D3833;
+}
+body, html {
   background: oldlace;
+}
+h1, h2 {
+  font-family: 'Merriweather', serif;
+}
+textarea {
+  font-family: 'Inter', sans-serif;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+}
+.translate-button {
+  float: right;
+  background-color: darkseagreen;
 }
 .dlog {
   display: none;

@@ -1,3 +1,5 @@
+"""Helpers for developing the translator."""
+
 import csv
 import os
 import subprocess

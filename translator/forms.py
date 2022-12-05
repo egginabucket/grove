@@ -7,7 +7,7 @@ class TranslationForm(forms.Form):
     add_lyrics = forms.BooleanField(required=False)
     sub_rel_ents = forms.BooleanField(required=False)
     gender_pronouns = forms.BooleanField(required=False)
-    hyper_search_depth = forms.IntegerField(max_value=5, min_value=0)
+    hyper_search_depth = forms.IntegerField(max_value=8, min_value=0)
     hypo_search_depth = forms.IntegerField(max_value=3, min_value=0)
     max_l_grouping = forms.IntegerField(max_value=4, min_value=0)
     max_r_grouping = forms.IntegerField(max_value=4, min_value=0)

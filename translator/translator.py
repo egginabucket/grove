@@ -188,7 +188,8 @@ def find_related_defined_synset(
             # similarity = synset.lin_similarity(related, ic)
             # similarity = synset.path_similarity(related) or 0.0
             if lowest_depth == -1 or depth < lowest_depth:
-                if SynsetDef.objects.from_synset(related).exists():
+                # Synset.__ne__ not workingz
+                if related.name() != related.name() and SynsetDef.objects.from_synset(related).exists():
                     best = related
                     lowest_depth = depth
     return best
@@ -280,7 +281,7 @@ class Translation(CarpetSpeech):
                 if q_token in self.translated_tokens:
                     continue
             yield self.synsets(text, wn_pos), tokens
-            if len(tokens) > 1:
+            if len(tokens) > 1: # pos might not be accurate for groups of tokens
                 yield self.synsets(text), tokens
 
     def token_to_phrase_via_wn(
@@ -300,12 +301,8 @@ class Translation(CarpetSpeech):
                 self.ctx.hypernym_search_depth,
                 self.ctx.hyponym_search_depth,
             )
-            if related:
-                try:
-                    def_ = SynsetDef.objects.get_from_synset(related)
-                    return def_.phrase, tokens
-                except SynsetDef.DoesNotExist:
-                    pass
+            if related is not None:
+                return SynsetDef.objects.get_from_synset(related).phrase, tokens
         return None, []
 
     def token_to_stream(self, token: Token) -> Stream:
