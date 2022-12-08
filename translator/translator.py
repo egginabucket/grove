@@ -33,6 +33,7 @@ THING = lexeme_from_en("thing")
 TIME = lexeme_from_en("time")
 THIS = lexeme_from_en("this")
 THAT = lexeme_from_en("that")
+AND = lexeme_from_en("and")
 
 
 SPECIAL_ENTS = {
@@ -68,6 +69,8 @@ DEP_ORDERING = [
     "pcomp",
     "amod",
     "ag",  # de
+    "cc",
+    "cd", # de
     "conj",
     "cj",  # de
     "rcmod",
@@ -361,6 +364,9 @@ class Translation(CarpetSpeech):
             else:
                 is_skipped = True
             self.translated_tokens.add(token)
+        elif token.pos_ == "CCONJ":
+            if "Cmp" in token.morph.get("ConjType"):
+                phrase = BasePhrase(lexeme=AND)
         elif token.pos_ in {
             "NOUN",
             "PROPN",
