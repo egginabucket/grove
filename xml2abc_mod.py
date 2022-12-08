@@ -1888,12 +1888,10 @@ class Parser:
                         dstaff = n - self.cur_staffs[voice]
                         self.cur_staffs[voice] = n
                         # reset current staff at start of measure to home position
-                        self.music.append_element(
-                            voice, "[I:staff %+d]" % dstaff
-                        )
+                        self.music.append_element(voice, f"[I:staff {dstaff}]")
                     self.music.append_element(voice, f"[K:{cs}]")
 
-    def find_voice(self, i: int, es):
+    def find_voice(self, i: int, es: list[E.Element]):
         staff_num = int(
             es[i].findtext("staff", 1)
         )  # directions belong to a staff
@@ -1917,13 +1915,13 @@ class Parser:
                 break
         return staff_num, v1, v1  # no note found, fall back to v1
 
-    def do_direction(
-        self, e: E.Element, i: int, es
-    ):  # parse a musicXML direction tag
-        def add_direction(x, vs, time, staff_num):
+    def do_direction(self, e: E.Element, i: int, es: list[E.Element]):
+        """parse a musicXML direction tag"""
+
+        def add_direction(x, v: int, time, staff_num: int):
             if not x:
                 return
-            vs = self.staff_map[staff_num] if "!8v" in x else [vs]
+            vs = self.staff_map[staff_num] if "!8v" in x else [v]
             # ottava's go to all voices of staff
             for voice in vs:
                 if time is not None:  # insert at time of encounter
@@ -1935,7 +1933,7 @@ class Parser:
                 else:
                     self.music.append_element(voice, x)
 
-        def start_stop(dtype, vs, staff_num=1):
+        def start_stop(dtype: str, v: int, staff_num=1):
             typmap = {
                 "down": "!8va(!",
                 "up": "!8vb(!",
@@ -1944,16 +1942,15 @@ class Parser:
                 "start": "!ped!",
             }
             type = t.get("type", "")
-            k = dtype + t.get(
-                "number", "1"
-            )  # key to match the closing direction
+            k = dtype + t.get("number", "1")
+            # key to match the closing direction
             if type in typmap:  # opening the direction
                 x = typmap[type]
                 if k in self.dirStk:  # closing direction already encountered
                     stype, time = self.dirStk[k]
                     del self.dirStk[k]
                     if stype == "stop":
-                        add_direction(x, vs, time, staff_num)
+                        add_direction(x, v, time, staff_num)
                     else:
                         info(
                             "%s direction %s has no stop in part %d, measure %d, voice %d"
@@ -1962,18 +1959,14 @@ class Parser:
                                 stype,
                                 self.measure.ixp + 1,
                                 self.measure.ixm + 1,
-                                vs + 1,
+                                v + 1,
                             )
                         )
-                        self.dirStk[k] = (
-                            type,
-                            vs,
-                        )  # remember voice and type for closing
+                        self.dirStk[k] = (type, v)
+                        # remember voice and type for closing
                 else:
-                    self.dirStk[k] = (
-                        type,
-                        vs,
-                    )  # remember voice and type for closing
+                    self.dirStk[k] = (type, v)
+                    # remember voice and type for closing
             elif type == "stop":
                 if k in self.dirStk:  # matching open direction found
                     type, vs = self.dirStk[k]
@@ -2001,7 +1994,7 @@ class Parser:
                     x = ""  # delay code generation until opening found
             else:
                 raise ValueError("wrong direction type")
-            add_direction(x, vs, None, staff_num)
+            add_direction(x, v, None, staff_num)
 
         tempo, words_text = None, ""
         placement = e.get("placement")
@@ -2019,22 +2012,22 @@ class Parser:
         if t is not None:
             minst = t.find("midi-instrument")
             if minst:
-                prg = t.findtext("midi-instrument/midi-program")
-                chn = t.findtext("midi-instrument/midi-channel")
+                prg = minst.findtext("midi-instrument/midi-program")
+                chn = minst.findtext("midi-instrument/midi-channel")
                 vids = [
                     voice
                     for voice, id in self.voice_instrument.items()
                     if id == minst.get("id")
                 ]
                 if vids:
-                    vs = vids[
-                        0
-                    ]  # direction for the indentified voice, not the staff
-                parm, instr = (
-                    ("program", str(int(prg) - 1)) if prg else ("channel", chn)
-                )
-                if instr and abc_out.vol_pan > 0:
-                    self.music.append_element(vs, f"[I:MIDI= {parm} {instr}]")
+                    vs = vids[0]
+                    # direction for the indentified voice, not the staff
+                if abc_out.vol_pan > 0:
+                    parm, instr = (
+                        ("program", str(int(prg) - 1)) if prg else ("channel", chn)
+                    )
+                    if instr:
+                        self.music.append_element(vs, f"[I:MIDI= {parm} {instr}]")
             tempo = t.get("tempo")  # look for tempo attribute
             if tempo:
                 tempo = "%.0f" % float(tempo)
@@ -2045,14 +2038,14 @@ class Parser:
                     jmp = v
                     break
         dirtypes = e.findall("direction-type")
-        for dirtyp in dirtypes:
+        for dir_type in dirtypes:
             units: dict[str, Tuple[int, int]] = {
                 "whole": (1, 1),
                 "half": (1, 2),
                 "quarter": (1, 4),
                 "eighth": (1, 8),
             }
-            metr = dirtyp.find("metronome")
+            metr = dir_type.find("metronome")
             if metr is not None:
                 t = metr.findtext("beat-unit", "")
                 if t in units:
@@ -2122,7 +2115,7 @@ class Parser:
             self.music.append_element(vs, f'"{plc}{words_text}"', True)
             # to voice, but after tempo
 
-    def parse_harmony(self, e: E.Element, i, es):
+    def parse_harmony(self, e: E.Element, i: int, es: list[E.Element]):
         """Parse a MusicXML harmony tag."""
         _, vt, _ = self.find_voice(i, es)
         short = {
