@@ -1,23 +1,21 @@
 from dataclasses import dataclass, field
-from functools import cached_property
 from itertools import chain, islice
 from typing import Generator, Iterable, Optional, Tuple
 
-from django.conf import settings
-from jangle.models import LanguageTag
 from music21.note import Rest
 from music21.spanner import Slur
 from music21.stream.base import Score, Stream
-from nltk.corpus.reader import Synset, WordNetCorpusReader
+from nltk.corpus.reader import Synset
 from spacy import load
 from spacy.glossary import GLOSSARY
 from spacy.language import Language
-from spacy.tokens import Span, Token, Doc
-from maas.music import MaasContext
-from carpet.speech import CarpetSpeech
+from spacy.tokens import Doc, Span, Token
+
 from carpet.base import AbstractPhrase, BasePhrase, Suffix
-from carpet.wordnet import wordnet
 from carpet.models import SynsetDef
+from carpet.speech import CarpetSpeech
+from carpet.wordnet import wordnet
+from maas.music import MaasContext
 from maas.utils import EN, lexeme_from_en
 from translator.models import SpacyLanguage
 
@@ -77,8 +75,8 @@ DEP_ORDERING = [
     "advmod",
     "advcl",
     "dative",
-    "part"
-    "attr", # ?
+    "part",
+    "attr",  # ?
     "pobj",
     "dobj",
     "acomp",
@@ -112,7 +110,7 @@ NEUTRAL_DEPS = {
 }
 """Dependency relations that don't denote a shift in the nucleus tone
 (phrase_up is not called)"""
-UP_DEPS = {"aux", "nsubj"} # TODO: figure out auxiliaries
+UP_DEPS = {"aux", "nsubj"}  # TODO: figure out auxiliaries
 NEG_DEPS = {"neg", "ng"}  # de
 ALT_WORDNETS = {
     "ita": ["ita_iwn"],
@@ -187,11 +185,13 @@ def find_related_defined_synset(
         ):
             # similarity = synset.lin_similarity(related, ic)
             # similarity = synset.path_similarity(related) or 0.0
-            if lowest_depth == -1 or depth < lowest_depth:
-                # Synset.__ne__ not workingz
-                if related.name() != related.name() and SynsetDef.objects.from_synset(related).exists():
-                    best = related
-                    lowest_depth = depth
+            if (
+                (lowest_depth == -1 or depth < lowest_depth)
+                and (best is None or best != related)
+                and SynsetDef.objects.from_synset(related).exists()
+            ):
+                best = related
+                lowest_depth = depth
     return best
 
 
@@ -281,7 +281,8 @@ class Translation(CarpetSpeech):
                 if q_token in self.translated_tokens:
                     continue
             yield self.synsets(text, wn_pos), tokens
-            if len(tokens) > 1: # pos might not be accurate for groups of tokens
+            if len(tokens) > 1:
+                # pos might not be accurate for groups of tokens
                 yield self.synsets(text), tokens
 
     def token_to_phrase_via_wn(
@@ -302,7 +303,10 @@ class Translation(CarpetSpeech):
                 self.ctx.hyponym_search_depth,
             )
             if related is not None:
-                return SynsetDef.objects.get_from_synset(related).phrase, tokens
+                return (
+                    SynsetDef.objects.get_from_synset(related).phrase,
+                    tokens,
+                )
         return None, []
 
     def token_to_stream(self, token: Token) -> Stream:
@@ -357,7 +361,15 @@ class Translation(CarpetSpeech):
             else:
                 is_skipped = True
             self.translated_tokens.add(token)
-        elif token.pos_ in {"NOUN", "PROPN", "NUM", "VERB", "ADJ", "ADV", "PART"}:
+        elif token.pos_ in {
+            "NOUN",
+            "PROPN",
+            "NUM",
+            "VERB",
+            "ADJ",
+            "ADV",
+            "PART",
+        }:
             wn_phrase, tokens = self.token_to_phrase_via_wn(token)
             if wn_phrase is not None:
                 phrase = wn_phrase
