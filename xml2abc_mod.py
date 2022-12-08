@@ -2037,8 +2037,7 @@ class Parser:
                 if t.get(r, ""):
                     jmp = v
                     break
-        dirtypes = e.findall("direction-type")
-        for dir_type in dirtypes:
+        for dir_type in e.findall("direction-type"):
             units: dict[str, Tuple[int, int]] = {
                 "whole": (1, 1),
                 "half": (1, 2),
@@ -2056,48 +2055,48 @@ class Parser:
                     tempo_units = simplify(
                         tempo_units[0] * 3, tempo_units[1] * 2
                     )
-                tmpro = re.search(r"[.\d]+", metr.findtext("per-minute", "-"))
+                tmpro = re.search(r"\d[.\d+]", metr.findtext("per-minute", "-"))
                 # look for a number
                 if tmpro:
                     tempo = tmpro.group()
                     # overwrites the value set by the sound element of this direction
-            t = dirtyp.find("wedge")
+            t = dir_type.find("wedge")
             if t is not None:
                 start_stop("wedge", vs)
-            all_words = dirtyp.findall("words")  # insert text annotations
+            all_words = dir_type.findall("words")  # insert text annotations
             if not all_words:
-                all_words = dirtyp.findall("rehearsal")
+                all_words = dir_type.findall("rehearsal")
                 # treat rehearsal mark as text annotation
-            for words in all_words:
-                if jmp:
-                    # ignore the words when a jump sound element is present in this direction
-                    self.music.append_element(vs, f"!{jmp}!", True)  # to voice
-                    break
-                plc = placement == "below" and "_" or "^"
-                if float(words.get("default-y", "0")) < 0:
-                    plc = "_"
-                if words.text:
-                    words_text += words.text.replace('"', r"\"").replace(
-                        "\n", r"\n"
-                    )
+            if jmp:
+                # ignore the words when a jump sound element is present in this direction
+                self.music.append_element(vs, f"!{jmp}!", True)  # to voice
+            else:
+                for words in all_words:
+                    plc = placement == "below" and "_" or "^"
+                    if float(words.get("default-y", "0")) < 0:
+                        plc = "_"
+                    if words.text:
+                        words_text += words.text.replace('"', r"\"").replace(
+                            "\n", r"\n"
+                        )
             words_text = words_text.strip()
             for key, val in dynamics_map.items():
-                if dirtyp.find("dynamics/" + key) is not None:
+                if dir_type.find("dynamics/" + key) is not None:
                     self.music.append_element(vs, val, True)  # to voice
-            if dirtyp.find("coda") is not None:
+            if dir_type.find("coda") is not None:
                 self.music.append_element(vs, "O", True)
-            if dirtyp.find("segno") is not None:
+            if dir_type.find("segno") is not None:
                 self.music.append_element(vs, "S", True)
-            t = dirtyp.find("octave-shift")
+            t = dir_type.find("octave-shift")
             if t is not None:
                 start_stop("octave-shift", vs, stf)
                 # assume size == 8 for the time being
-            t = dirtyp.find("pedal")
+            t = dir_type.find("pedal")
             if t is not None and self.render_pedal_dirs:
                 if not self.pedal_dir_voice:
                     self.pedal_dir_voice = vs
                 start_stop("pedal", self.pedal_dir_voice)
-            if dirtyp.findtext("other-direction") == "diatonic fretting":
+            if dir_type.findtext("other-direction") == "diatonic fretting":
                 self.diafret = True
         if tempo:
             tempo = "%.0f" % float(

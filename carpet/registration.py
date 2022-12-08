@@ -14,11 +14,9 @@ from carpet.parser import StrPhrase
 
 
 class DictionaryLoader:
-    lang: LanguageTag
-    registered_paths = []
-
     def __init__(self, lang: LanguageTag) -> None:
         self.lang = lang
+        self.registered_paths = []
 
     def register(self, path):
         if path in self.registered_paths:

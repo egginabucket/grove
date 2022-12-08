@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import enum
 from dataclasses import dataclass, field
 from typing import Any, Generator, Optional
+import warnings
 
 from django.db import models
-from jangle.models import LanguageTag
 from jangle.utils import StrReprCls
 
 # from django.conf import settings
@@ -50,10 +49,10 @@ class AbstractPhrase(StrReprCls):
                 child.multiplier *= self.multiplier
                 if self.suffix:
                     if child.suffix:
-                        raise ValueError(f"cannot add suffix to child")
+                        warnings.warn(f"cannot add suffix to child")
                     else:
                         child.suffix = self.suffix
-                    self.suffix = ""
+                        self.suffix = ""
                 if self.count:
                     if child.count is None:
                         child.count = 1
