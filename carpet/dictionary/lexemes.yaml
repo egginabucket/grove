@@ -616,6 +616,7 @@ leaf:
   - bit.n.02
   - flake.v.01
   - petal.n.01
+  - tab.n.04
 left:
   - left.n.01
   - left.n.02
@@ -1115,6 +1116,7 @@ water:
   - melted.a.01
   - liquid.s.05
   - fluent.s.01
+  - soup.n.02
 way:
   - manner.n.01
   - means.n.01
