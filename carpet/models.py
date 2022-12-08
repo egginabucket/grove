@@ -64,7 +64,7 @@ class PhraseComposition(models.Model):
 
     class Meta:
         unique_together = ("parent", "index")
-        ordering = ("parent", "index")
+        ordering = ["parent", "index"]
 
 
 class SynsetDefQuerySet(models.QuerySet["SynsetDef"]):
