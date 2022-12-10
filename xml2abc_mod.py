@@ -2024,10 +2024,14 @@ class Parser:
                     # direction for the indentified voice, not the staff
                 if abc_out.vol_pan > 0:
                     parm, instr = (
-                        ("program", str(int(prg) - 1)) if prg else ("channel", chn)
+                        ("program", str(int(prg) - 1))
+                        if prg
+                        else ("channel", chn)
                     )
                     if instr:
-                        self.music.append_element(vs, f"[I:MIDI= {parm} {instr}]")
+                        self.music.append_element(
+                            vs, f"[I:MIDI= {parm} {instr}]"
+                        )
             tempo = t.get("tempo")  # look for tempo attribute
             if tempo:
                 tempo = "%.0f" % float(tempo)
@@ -2055,7 +2059,9 @@ class Parser:
                     tempo_units = simplify(
                         tempo_units[0] * 3, tempo_units[1] * 2
                     )
-                tmpro = re.search(r"\d[.\d+]", metr.findtext("per-minute", "-"))
+                tmpro = re.search(
+                    r"\d[.\d+]", metr.findtext("per-minute", "-")
+                )
                 # look for a number
                 if tmpro:
                     tempo = tmpro.group()
@@ -2099,9 +2105,8 @@ class Parser:
             if dir_type.findtext("other-direction") == "diatonic fretting":
                 self.diafret = True
         if tempo:
-            tempo = "%.0f" % float(
-                tempo
-            )  # hope it is a number and insert in voice 1
+            tempo = "%.0f" % float(tempo)
+            # hope it is a number and insert in voice 1
             if self.music.time == 0 and self.measure.ixm == 0:
                 # first measure -> header
                 abc_out.tempo = tempo
@@ -2165,7 +2170,7 @@ class Parser:
             kind.replace("79", "9").replace("713", "13").replace("maj6", "6")
         )
         bass = e.findtext("bass/bass-step", "") + altmap.get(
-            e.findtext("bass/bass-alter", "_"), ""
+            e.findtext("bass/bass-alter", "-"), ""
         )
         self.music.append_element(
             vt,
@@ -2523,9 +2528,8 @@ class Parser:
                 measure = measures[self.measure.ixm]
                 repeat, line_break = 0, ""
                 self.measure.reset()
-                self.cur_alts = (
-                    {}
-                )  # passing accidentals are reset each measure
+                self.cur_alts = {}
+                # passing accidentals are reset each measure
                 es = list(measure)
                 for i, e in enumerate(es):
                     if e.tag == "note":
