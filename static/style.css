@@ -21,9 +21,19 @@ textarea {
   box-sizing: border-box;
   width: 100%;
 }
+input, button, textarea, select {
+  border: 1px solid #80988F;
+  border-radius: 2px;
+}
 .translate-button {
-  float: right;
   background-color: darkseagreen;
+  padding: 4px;
+}
+.main-options {
+  margin-block: 4px;
+}
+.side-options {
+  float: right;
 }
 .dlog {
   display: none;
@@ -38,11 +48,10 @@ textarea {
   overflow: auto;
 }
 .abc svg {
-  max-width: 600px;
+  margin-top: 10px;
+  max-width: 100%;
+  box-sizing: border-box;
   background: #f8f8f8;
   display: block;
   cursor: pointer;
-}
-.ewd svg {
-  max-width: 800px;
 }

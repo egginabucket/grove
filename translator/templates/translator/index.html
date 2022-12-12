@@ -50,13 +50,14 @@
         required
         onkeydown="textareaKeyDown(event)"
       ></textarea>
-      <div>
-        <select required name="lang" id="lang">
-          {% for lang in langs %}
-          <option value="{{lang.text}}">{{ lang.description }}</option>
-          {% endfor %}
-        </select>
-        <span>
+      <div class="main-options">
+        <button type="submit" class="translate-button">Translate</button>
+        <span class="side-options">
+          <select required name="lang" id="lang">
+            {% for lang in langs %}
+            <option value="{{lang.text}}">{{ lang.description }}</option>
+            {% endfor %}
+          </select>
           <input
             type="checkbox"
             id="showAdvanced"
@@ -64,7 +65,6 @@
           />
           <label for="showAdvanced"> Show advanced options</label>
         </span>
-        <button type="submit" class="translate-button">Translate</button>
       </div>
       <div id="advanced" style="display: none">
         <div>
