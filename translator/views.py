@@ -12,7 +12,6 @@ from django.http import (
 from django.shortcuts import render
 from django.urls import reverse
 from jangle.models import LanguageTag
-from jangle.lite import LangTag
 from music21.key import Key
 from music21.tinyNotation import Converter
 
@@ -33,7 +32,7 @@ def index(request: HttpRequest):
             best_langs.append(lang)
         else:
             langs.append(lang)
-    langs = best_langs + langs
+    langs = sorted(best_langs, key=lambda l: req_langs.index(l.text)) + langs
     if request.method == "POST":
         form = TranslationForm(request.POST)
         if form.is_valid():
