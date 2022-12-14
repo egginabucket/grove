@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from itertools import chain, islice
-from typing import Generator, Iterable, Optional, Tuple
+from typing import Generator, Optional, Tuple, Iterable
 
 from music21.note import Rest
 from music21.spanner import Slur
@@ -15,7 +15,7 @@ from carpet.base import AbstractPhrase, BasePhrase, Suffix
 from carpet.models import SynsetDef
 from carpet.speech import CarpetSpeech
 from carpet.wordnet import wordnet
-from maas.music import MaasContext
+from maas.speech import MaasContext
 from maas.utils import EN, lexeme_from_en
 from translator.models import SpacyLanguage
 
@@ -70,7 +70,7 @@ DEP_ORDERING = [
     "amod",
     "ag",  # de
     "cc",
-    "cd", # de
+    "cd",  # de
     "conj",
     "cj",  # de
     "rcmod",
@@ -119,7 +119,7 @@ ALT_WORDNETS = {
     "ita": ["ita_iwn"],
 }
 
-_spacy_cache: dict[str, Language] = {}
+_spacy_cache: dict[int, Language] = {}
 
 
 def text_to_wn_lemma(text: str) -> str:
@@ -148,54 +148,28 @@ def token_groups(
 
 
 def related_synsets(
-    synset: Synset,
+    synsets: Iterable[Synset],
     hypernym_search_depth: int,
     hyponym_search_depth: int,
-    cur_depth=0,
-) -> Generator[Tuple[Synset, int], None, None]:
+    yielded: list = [],
+) -> Generator[Synset, None, None]:
     """Navigates hypernyms & hyponyms recursively"""
-    yield synset, cur_depth
-    cur_depth += 1
+    synsets = [s for s in synsets if s not in yielded]
+    yield from synsets
     if hypernym_search_depth > 0:
-        for hypernym in synset.hypernyms():
-            yield from related_synsets(
-                hypernym,
-                hypernym_search_depth - 1,
-                hyponym_search_depth,
-                cur_depth,
-            )
+        yield from related_synsets(
+            chain.from_iterable(s.hypernyms() for s in synsets),
+            hypernym_search_depth - 1,
+            hyponym_search_depth,
+            yielded + synsets,
+        )
     if hyponym_search_depth > 0:
-        for hyponym in synset.hyponyms():
-            yield from related_synsets(
-                hyponym,
-                hypernym_search_depth,
-                hyponym_search_depth - 1,
-                cur_depth,
-            )
-
-
-def find_related_defined_synset(
-    synsets: Iterable[Synset],
-    ic: dict,
-    hypernym_search_depth=3,
-    hyponym_search_depth=1,
-) -> Optional[Synset]:
-    best = None
-    lowest_depth = -1
-    for synset in synsets:
-        for related, depth in related_synsets(
-            synset, hypernym_search_depth, hyponym_search_depth
-        ):
-            # similarity = synset.lin_similarity(related, ic)
-            # similarity = synset.path_similarity(related) or 0.0
-            if (
-                (lowest_depth == -1 or depth < lowest_depth)
-                and (best is None or best != related)
-                and SynsetDef.objects.from_synset(related).exists()
-            ):
-                best = related
-                lowest_depth = depth
-    return best
+        yield from related_synsets(
+            chain.from_iterable(s.hyponyms() for s in synsets),
+            hypernym_search_depth,
+            hyponym_search_depth - 1,
+            yielded + synsets,
+        )
 
 
 @dataclass
@@ -204,7 +178,7 @@ class TranslatorContext(MaasContext):
     sub_rel_ents: bool = False
     max_l_grouping: int = 2
     max_r_grouping: int = 2
-    hypernym_search_depth: int = 4
+    hypernym_search_depth: int = 6
     hyponym_search_depth: int = 2
     wn_ic: dict = field(default_factory=dict)
 
@@ -292,24 +266,18 @@ class Translation(CarpetSpeech):
         self, token: Token
     ) -> Tuple[Optional[AbstractPhrase], list[Token]]:
         for synsets, tokens in self.potential_synset_lists(token):
-            for synset in synsets:
+            related = related_synsets(
+                synsets,
+                self.ctx.hypernym_search_depth,
+                self.ctx.hyponym_search_depth,
+            )
+            for synset in related:
                 try:
                     def_ = SynsetDef.objects.get_from_synset(synset)
                     return def_.phrase, tokens
                 except SynsetDef.DoesNotExist:
+                    print(synset)
                     pass
-        for synsets, tokens in self.potential_synset_lists(token):
-            related = find_related_defined_synset(
-                synsets,
-                self.ctx.wn_ic,
-                self.ctx.hypernym_search_depth,
-                self.ctx.hyponym_search_depth,
-            )
-            if related is not None:
-                return (
-                    SynsetDef.objects.get_from_synset(related).phrase,
-                    tokens,
-                )
         return None, []
 
     def token_to_stream(self, token: Token) -> Stream:
@@ -318,7 +286,7 @@ class Translation(CarpetSpeech):
         root_m21_obj = None
         if token in self.translated_tokens:
             pass
-        elif token in chain(*self.ent_phrases):
+        elif token in chain.from_iterable(self.ent_phrases):
             for ent, ent_phrase in self.ent_phrases.items():
                 if token in ent:
                     phrase = ent_phrase
@@ -437,22 +405,17 @@ class Translation(CarpetSpeech):
     def translate_ents(self) -> None:
         for ent in self.span.ents:
             ent_lemma = text_to_wn_lemma(ent.text)
-            synsets = self.synsets(ent_lemma, wordnet.NOUN)
             phrase = None
+            synsets = related_synsets(
+                self.synsets(ent_lemma, wordnet.NOUN),
+                int(self.ctx.sub_rel_ents) and self.ctx.hypernym_search_depth,
+                int(self.ctx.sub_rel_ents) and self.ctx.hyponym_search_depth,
+            )
             for synset in synsets:
                 try:
                     phrase = SynsetDef.objects.get_from_synset(synset).phrase
                 except SynsetDef.DoesNotExist:
                     pass
-            if phrase is None and self.ctx.sub_rel_ents:
-                related = find_related_defined_synset(
-                    synsets,
-                    self.ctx.wn_ic,
-                    self.ctx.hypernym_search_depth,
-                    self.ctx.hyponym_search_depth,
-                )
-                if related is not None:
-                    phrase = SynsetDef.objects.get_from_synset(related).phrase
             if not phrase and ent.label_ in ENT_FALLBACKS:
                 phrase = ENT_FALLBACKS[ent.label_]
             if phrase is not None:
@@ -474,16 +437,16 @@ def translate(
     spacy_lang = SpacyLanguage.objects.from_lang(lang).largest()
     if spacy_lang is None:
         raise ValueError(f"no spacy models downloaded for {lang}")
-    nlp = _spacy_cache.get(spacy_lang.name)
+    nlp = _spacy_cache.get(spacy_lang.pk)
     if nlp is None:
         nlp = load(spacy_lang.name)
-        _spacy_cache[spacy_lang.name] = nlp
+        _spacy_cache[spacy_lang.pk] = nlp
     stream = Score()
     doc = nlp(text)
     for sent in doc.sents:
         speech = Translation(ctx, sent)
         stream.append(speech.stream)
-        print("Skipped tokens:", speech.skipped_tokens)
+        print("Skipped tokens:", ", ".join(f"{t.text} {t.pos_}" for t in speech.skipped_tokens))
         print("Entities:", speech.ent_phrases)
     stream = stream.flatten()
     last = stream.last()

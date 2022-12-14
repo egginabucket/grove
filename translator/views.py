@@ -1,3 +1,4 @@
+import os
 import subprocess
 import uuid
 
@@ -11,6 +12,7 @@ from django.http import (
 from django.shortcuts import render
 from django.urls import reverse
 from jangle.models import LanguageTag
+from jangle.lite import LangTag
 from music21.key import Key
 from music21.tinyNotation import Converter
 
@@ -20,6 +22,18 @@ from translator.translator import TranslatorContext, translate
 
 
 def index(request: HttpRequest):
+    req_langs = [
+        l.split(";")[0]
+        for l in request.headers.get("Accept-Language", "en").split(",")
+    ]
+    langs = []
+    best_langs = []
+    for lang in get_supported_languages():
+        if lang.text in req_langs:
+            best_langs.append(lang)
+        else:
+            langs.append(lang)
+    langs = best_langs + langs
     if request.method == "POST":
         form = TranslationForm(request.POST)
         if form.is_valid():
@@ -48,14 +62,16 @@ def index(request: HttpRequest):
                 form.cleaned_data["add_lyrics"],
             )
             uuid4 = str(uuid.uuid4())
-            path = score.write("mxl", settings.M21_OUT_DIR / uuid4)
+            path = score.write(
+                "mxl", os.path.join(settings.M21_OUT_DIR, uuid4)
+            )
             subprocess.call(
                 [
                     "python3",
                     settings.BASE_DIR / "xml2abc_mod.py",
                     str(path),
                     "-o",
-                    str(settings.M21_OUT_DIR),
+                    settings.M21_OUT_DIR,
                 ]
             )
             with open(str(path).removesuffix(".mxl") + ".abc") as f:
@@ -63,7 +79,7 @@ def index(request: HttpRequest):
                     request,
                     "translator/index.html",
                     {
-                        "langs": get_supported_languages(),
+                        "langs": langs,
                         "abc": f.read(),
                         "mxl_url": f"/mxl/{uuid4}/",  # TODO: use reverse
                     },
@@ -74,7 +90,7 @@ def index(request: HttpRequest):
     return render(
         request,
         "translator/index.html",
-        {"langs": get_supported_languages(), "abc": None},
+        {"langs": langs, "abc": None},
     )
 
 
