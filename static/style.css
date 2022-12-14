@@ -4,30 +4,43 @@ body,
 html,
 input,
 button,
+select,
+option,
 textarea,
 ::placeholder {
-  font-family: 'Inter', sans-serif;
-  color: #2D3833;
+  font-family: "Inter", sans-serif;
+  color: #2d3833;
 }
-body, html {
+body,
+html {
   background: oldlace;
 }
-h1, h2 {
-  font-family: 'Merriweather', serif;
+h1,
+h2 {
+  font-family: "Merriweather", serif;
 }
 textarea {
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   display: block;
   box-sizing: border-box;
   width: 100%;
 }
-input, button, textarea, select {
-  border: 1px solid #80988F;
+input,
+button,
+textarea,
+select {
+  border: 1px solid #80988f;
   border-radius: 2px;
 }
 .translate-button {
   background-color: darkseagreen;
   padding: 4px;
+}
+h1 {
+  margin-block: 12px;
+}
+h2 {
+  margin-block: 8px;
 }
 .main-options {
   margin-block: 4px;
