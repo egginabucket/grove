@@ -2283,7 +2283,7 @@ class Parser:
             credit_strs = []  # default: only credit when no title set
         title_lines = []
         for work_title in work_titles:
-            title_creditslines.append("T:" + work_title)
+            title_lines.append("T:" + work_title)
         for movement_title in movement_titles:
             if movement_title not in work_titles:
                 title_lines.append("T:" + movement_title)
