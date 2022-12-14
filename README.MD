@@ -28,41 +28,51 @@ Install requirements:
 
 `pip install --require-virtualenv -r requirements.txt`
 
-Next, set the `DJANGO_DATABASE_URL` environment variable
+Next, set the `DATABASE_URL` environment variable
 with the format `postgres://USER:PASSWORD@HOST:PORT/NAME`
 
 Migrate database:
 
 `python manage.py migrate`
 
-Note: you might have to comment the line importing TranslationContext in translator/views.py if you get weird errors.
-Just remember to uncomment it before you start translating stuff lol
-
 Load jangle (language tags) data:
 
 `python manage.py loadjangledata`
 
-Download the wordnet and register Maas & Carpet data:
+Load the Maas lexicon:
+
+`python manage.py loadlexicon`
+(use -h for more info)
+
+Set the `MAAS_LOADED` environment variable to anything to enable the rest of the apps.
+
+Download the WordNet:
 
 ```
-python manage.py shell
+python
 >>> import nltk
 >>> nltk.download("wordnet")
 >>> nltk.download("wordnet2021")
->>> from maas.registration import register_full_lexicon
->>> register_full_lexicon()
->>> from carpet.registration import register_dictionaries
->>> register_dictionaries()
 ```
-
-Note: you can run register_dictionaries and register_full_lexicon again if you've changed any definitions or added any lexicons!
 
 Next, extract `corpora/wordnet.zip` (usually in nltk_data in your home dir) into `corpora` and `corpora/wordnet2021`.
 Hopefully this won't be necessary after the next nltk release ([see this gh issue](https://github.com/nltk/nltk/issues/30510))
 
+Register the dictionary:
+
+`python manage.py loaddictionary`
+(use -h for more info)
+
 Load some fixtures:
 
 `python manage.py loaddata translator/fixtures/spacy.yaml`
+
+Download SpaCy packages:
+
+`python manage.py loadspacymodels dev -d`
+(use -h for more info)
+
+Feel free to replace `dev` with any of the files in translator/spacy-models or the given directory, just be wary of storage use.
 
 Make a superuser:
 
@@ -70,13 +80,16 @@ Make a superuser:
 
 Run server:
 
-`python manage.py runserver`
+Set the
+WEB_CONCURRENCY,
+DJANGO_SECRET_KEY,
+M21_OUT_DIR,
+CSRF_ALLOWED_ORIGINS,
+and CORS_ALLOWED_ORIGINS
+environment variables
+and `./runserver.sh`
 
-Go to http://localhost:8000/admin/translator/spacylanguage/ and save any SpaCy language models you'll be using.
-Install them with the &quot;Download SpaCy package&quot; action.
-I recommend using medium-sized models (check out https://spacy.io/models)
-
-Finally, you can go to localhost:8000 and start screwing around!
+Or `python manage.py runserver` for dev.
 
 Note: English is currently the only language with lexeme translations written,
 so for other languages write some (please!) in maas/lexicon
@@ -85,6 +98,8 @@ or disable lexeme lyrics in the translator's advanced settings.
 ## Some Software Used
 
 All libraries and programs used are FOSS (free open-source software), with the exception of Google Translate, used for languages unsupported by SpaCy or the Open Multilingual Wordnet. (WIP)
+
+REFERENCES COMING SOON
 
 ### Celery
 
@@ -117,9 +132,20 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [PyPI](https://pypi.org/project/nltk/)
 - [Source](https://github.com/nltk/nltk)
 
+### Open English WordNet
+
+- [Official Site](https://en-word.net/)
+- [Source](https://github.com/globalwordnet/english-wordnet)
+
+### Open Multilingual Wordnet
+
+- [Original Site (down)](http://compling.hss.ntu.edu.sg/omw/)
+- [Blog Post](https://blogs.ntu.edu.sg/dh/project/open-multilingual-wordnet/)
+
 ### Redis
 
 - [Official Site](https://redis.io/)
+- [Source](https://github.com/redis/redis)
 
 ### SpaCy
 
@@ -132,6 +158,10 @@ All libraries and programs used are FOSS (free open-source software), with the e
 - [Homepage](https://www.uvicorn.org/)
 - [PyPI](https://pypi.org/project/uvicorn/)
 - [Source](https://github.com/encode/uvicorn/)
+
+## xml2abc
+
+- [Homepage](https://wim.vree.org/svgParse/xml2abc.html)
 
 ### xmlplay
 
