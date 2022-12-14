@@ -28,3 +28,7 @@
     abbr: trf
     scale: 4
     name: transformer
+- model: translator.spacymodeltype
+  pk: 1
+  fields:
+    abbr: core
