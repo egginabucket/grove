@@ -1,5 +1,11 @@
 requires: []
 
+"[must] -have":
+  - want.v.02
+  - want.v.04
+  - want.v.05
+  - lack.n.01
+  - necessitate.v.01
 "place that":
   - there.n.01
   - there.r.01
