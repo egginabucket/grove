@@ -317,9 +317,8 @@ class Music:
                 self.last_note.before += [d]
         self.last_note.notes.append(note.ntdec + noot)
 
-    def add_bar(
-        self, line_break: str, measure: Measure
-    ):  # linebreak, measure data
+    def add_bar(self, line_break: str, measure: Measure):
+        """linebreak, measure data"""
         if (
             measure.measure_duration
             and self.max_time > measure.measure_duration
@@ -353,19 +352,16 @@ class Music:
                         if measure.ixp + voice == min(self.voice_nums):
                             x += measure.lnum
                     elif measure.lnum:  # new behaviour with I:repbra 0
-                        x += (
-                            measure.lnum
-                        )  # add volta number(s) or text to all voices
+                        x += measure.lnum
+                        # add volta number(s) or text to all voices
                         self.repbra = True  # signal occurrence of a volta
                     prev.string = x  # modify previous right barline
-                elif (
-                    measure.lline
-                ):  # begin of new part and left repeat bar is required
+                elif measure.lline:
+                    # begin of new part and left repeat bar is required
                     self.insert_element(voice, "|:")
             if line_break:
-                prev = self.get_last_record(
-                    voice
-                )  # get the previous barline record
+                prev = self.get_last_record(voice)
+                # get the previous barline record
                 if prev:
                     prev.string += line_break  # insert linebreak char after the barlines+volta
             if measure.attr:  # insert signatures at front of buffer
@@ -375,20 +371,17 @@ class Music:
             self.voices[voice] = sort_measure(self.voices[voice], measure)
             # make all times consistent
             lyrics = self.lyrics[voice]  # [{number: sylabe}, .. for all notes]
-            lyric_dict = (
-                {}
-            )  # {number: (abc_lyric_string, melis)} for this voice
+            lyric_dict = {}
+            # {number: (abc_lyric_string, melis)} for this voice
             nums = [num for d in lyrics for num in d.keys()]
             # the lyrics numbers in this measure
-            max_nums = max(
-                nums + [0]
-            )  # the highest lyrics number in this measure
+            max_nums = max(nums + [0])
+            # the highest lyrics number in this measure
             for i in range(max_nums, 0, -1):
                 xs = [syldict.get(i, "") for syldict in lyrics]
                 # collect the syllabi with number i
-                melis = self.get_last_melisma(
-                    voice, i
-                )  # get melisma from last measure
+                melis = self.get_last_melisma(voice, i)
+                # get melisma from last measure
                 lyric_dict[i] = abc_lyrics(xs, melis)
             self.lyrics[voice] = lyric_dict
             # {number: (abc_lyric_string, melis)} for this measure
@@ -404,17 +397,15 @@ class Music:
         vnum_keys = list(self.voice_nums)
         if self.javascript or is_sib:
             vnum_keys.sort()
-        min_voice = min(
-            vnum_keys or [1]
-        )  # lowest XML voice number of this part
+        min_voice = min(vnum_keys or [1])
+        # lowest XML voice number of this part
         for voice in vnum_keys:
             if self.counter.getv("note", voice) == 0:
                 # no real notes counted in this voice
                 continue  # skip empty voices
             if abc_out.denL:
-                unit_l = (
-                    abc_out.denL
-                )  # take the unit length from the -d option
+                unit_l = abc_out.denL
+                # take the unit length from the -d option
             else:
                 unit_l = compute_unit_length(voice, self.g_measures, divs)
                 # compute the best unit length for this voice
@@ -433,9 +424,8 @@ class Music:
                             vl[n].append("")  # fill in skipped measures
                         vl[n].append(lyric_str)
                     else:
-                        vl[n] = im * [""] + [
-                            lyric_str
-                        ]  # must skip im measures
+                        vl[n] = im * [""] + [lyric_str]
+                        # must skip im measures
             for (n, lyrics) in vl.items():
                 # fill up possibly empty lyric measures at the end
                 missing = len(vn) - len(lyrics)
@@ -445,9 +435,8 @@ class Music:
                 if self.no_volta == 1 and self.voice_count > 1:
                     abc_out.add("I:repbra 0")  # only volta on first voice
                 if self.no_volta == 2 and voice > min_voice:
-                    abc_out.add(
-                        "I:repbra 0"
-                    )  # only volta on first voice of each part
+                    abc_out.add("I:repbra 0")
+                    # only volta on first voice of each part
             if self.chars_per_line > 0:
                 self.bars_per_line = 0
                 # option -n (max chars per line) overrules -b (max bars per line)
@@ -475,15 +464,13 @@ class Music:
                 for n, lyrics in lyric_lines:
                     abc_out.add("w: " + "|".join(lyrics[:ib]) + "|")
                     del lyrics[:ib]
-            xml2abcmap[
-                voice
-            ] = self.voice_count  # XML voice number -> ABC voice number
+            xml2abcmap[voice] = self.voice_count
+            # XML voice number -> ABC voice number
             self.voice_count += 1  # count voices over all parts
         self.g_measures = []  # reset the follwing instance vars for each part
         self.g_lyrics = []
-        self.counter.prcnt(
-            ip + 1
-        )  # print summary of skipped items in this part
+        self.counter.prcnt(ip + 1)
+        # print summary of skipped items in this part
         return xml2abcmap
 
 
@@ -670,13 +657,13 @@ class ABCOutput:
 
     def write_all(self):
         """determine the required encoding of the entire ABC output"""
-        str = "".join(self.abc_out)
+        string = "".join(self.abc_out)
         if self.dojef:
-            str = perc2map(str)
+            string = perc2map(string)
         if python3:
-            self.out_file.write(str)
+            self.out_file.write(string)
         else:
-            self.out_file.write(str.encode("utf-8"))  # type: ignore
+            self.out_file.write(string.encode("utf-8"))  # type: ignore
         if self.out_path:
             self.out_file.close()  # close each file with -o option
         else:
@@ -1060,13 +1047,13 @@ def get_part_list(parts):
     return xs
 
 
-def parse_parts(xs, d, e):
+def parse_parts(xs: list[E.Element], d: dict[str, list[str]], e):
     """-> [elems on current level], rest of xs"""
     if not xs:
         return [], []
     x = xs.pop(0)
     if x.tag == "part-group":
-        num, type = x.get("number"), x.get("type")
+        num, type = x.get("number", "-"), x.get("type")
         if type == "start":  # go one level deeper
             s = [
                 x.findtext(n, "")
@@ -1081,26 +1068,21 @@ def parse_parts(xs, d, e):
             e.append(num)  # make stack of open group numbers
             elemsnext, rest1 = parse_parts(xs, d, e)
             # parse one level deeper to next stop
-            elems, rest2 = parse_parts(
-                rest1, d, e
-            )  # parse the rest on this level
+            elems, rest2 = parse_parts(rest1, d, e)
+            # parse the rest on this level
             return [elemsnext] + elems, rest2
         else:  # stop: close level and return group-data
             nums = e.pop()  # last open group number in stack order
             if xs and xs[0].get("type") == "stop":  # two consequetive stops
                 if num != nums:  # in the wrong order (tempory solution)
-                    d[nums], d[num] = (
-                        d[num],
-                        d[nums],
-                    )  # exchange values    (only works for two stops!!!)
-            sym = d[
-                num
-            ]  # retrieve an return groupdata as last element of the group
+                    d[nums], d[num] = (d[num], d[nums])
+                    # exchange values    (only works for two stops!!!)
+            sym = d[num]
+            # retrieve an return groupdata as last element of the group
             return [sym], xs
     else:
-        elems, rest = parse_parts(
-            xs, d, e
-        )  # parse remaining elements on current level
+        elems, rest = parse_parts(xs, d, e)
+        # parse remaining elements on current level
         name = x.findtext("part-name", ""), x.findtext("part-abbreviation", "")
         return [name] + elems, rest
 
@@ -2202,28 +2184,25 @@ class Parser:
             if end.get("type") == "start":
                 n = end.get("number", "1").replace(".", "").replace(" ", "")
                 try:
-                    list(
-                        map(int, n.split(","))
-                    )  # should be a list of integers
-                except:
+                    list(map(int, n.split(",")))
+                    # should be a list of integers
+                except ValueError:
                     n = '"%s"' % n.strip()  # illegal musicXML
                 self.measure.lnum = n
                 # assume a start is always at the beginning of a measure
-            elif (
-                self.measure.rline == "|"
-            ):  # stop and discontinue the same  in ABC ?
-                self.measure.rline = (
-                    "||"  # to stop on a normal barline use || in ABC ?
-                )
+            elif self.measure.rline == "|":
+                # stop and discontinue the same  in ABC ?
+                self.measure.rline = "||"
+                # to stop on a normal barline use || in ABC ?
         return 0
 
-    def doPrint(self, e):
+    def do_print(self, e):
         """print element, measure number -> insert a line break"""
         if e.get("new-system") == "yes" or e.get("new-page") == "yes":
             if not self.nolbrk:
                 return "$"  # a line break
 
-    def doPartList(self, e):
+    def do_part_list(self, e):
         """Translate the start/stop-event-based XML-partlist into proper tree."""
         for score_part in e.findall("part-list/score-part"):
             midi = {}
@@ -2235,12 +2214,10 @@ class Parser:
                     )
                 ]
                 pan = float(x[3])
-                if (
-                    pan >= -90 and pan <= 90
-                ):  # would be better to map behind-pannings
-                    pan = (
-                        (float(x[3]) + 90) / 180 * 127
-                    )  # XML between -90 and +90
+                if pan >= -90 and pan <= 90:
+                    # would be better to map behind-pannings
+                    pan = (float(x[3]) + 90) / 180 * 127
+                    # XML between -90 and +90
                 midi[m.get("id")] = [
                     int(x[0]),
                     int(x[1]),
@@ -2254,15 +2231,11 @@ class Parser:
             self.instr_midis.append(midi)
         ps = e.find("part-list")  # partlist  = [groupelem]
         xs = get_part_list(ps)  # groupelem = partname | grouplist
-        partlist, _ = parse_parts(
-            xs, {}, []
-        )  # grouplist = [groupelem, ..., groupdata]
+        partlist, _ = parse_parts(xs, {}, [])
+        # grouplist = [groupelem, ..., groupdata]
         return partlist  # groupdata = [group-symbol, group-barline, group-name, group-abbrev]
 
     def make_title(self, element_tree: E.ElementTree):
-        def filter_credits(y):  # y == filter level, higher filters less
-            return
-
         def lines(text: str):
             return (line.strip() for line in text.splitlines())
 
@@ -2282,7 +2255,7 @@ class Parser:
                 lyricists.extend(lines(rights.text))
         for credit in element_tree.findall("credit"):
             cs = "".join(e.text or "" for e in credit.findall("credit-words"))
-            credits += [re.sub(r"\s*[\r\n]\s*", " ", cs)]
+            credits.append(re.sub(r"\s*[\r\n]\s*", " ", cs))
         credit_strs = []
         for x in credits:  # skip redundant credit lines
             skip = False
@@ -2310,7 +2283,7 @@ class Parser:
             credit_strs = []  # default: only credit when no title set
         title_lines = []
         for work_title in work_titles:
-            title_lines.append("T:" + work_title)
+            title_creditslines.append("T:" + work_title)
         for movement_title in movement_titles:
             if movement_title not in work_titles:
                 title_lines.append("T:" + movement_title)
@@ -2334,9 +2307,8 @@ class Parser:
         defaults = element_tree.find("defaults")
         if defaults is None:
             return
-        mils = defaults.findtext(
-            "scaling/millimeters"
-        )  # mills == staff height (mm)
+        mils = defaults.findtext("scaling/millimeters")
+        # mills == staff height (mm)
         tenths = defaults.findtext("scaling/tenths")  # staff height in tenths
         if not mils or not tenths:
             return
@@ -2495,7 +2467,7 @@ class Parser:
         e = E.parse(fobj)
         self.make_title(e)
         self.do_defaults(e)
-        partlist = self.doPartList(e)
+        partlist = self.do_part_list(e)
         parts = e.findall("part")
         for ip, p in enumerate(parts):
             measures = p.findall("measure")
@@ -2554,7 +2526,7 @@ class Parser:
                         if check_bug(dt, self.measure):
                             self.music.increment_time(dt)
                     elif e.tag == "print":
-                        line_break = self.doPrint(e)
+                        line_break = self.do_print(e)
                 self.music.add_bar(line_break, self.measure)
                 divisions.append(self.measure.divs)
                 if repeat == 1:
