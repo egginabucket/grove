@@ -1,6 +1,8 @@
-import os
 import json
+import os
 from pathlib import Path
+
+import dj_database_url
 from music21.key import Key
 
 try:
@@ -20,7 +22,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split() + ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split() + [
+    "localhost",
+    "127.0.0.1",
+]
 if csrf_str := os.environ.get("CSRF_TRUSTED_ORIGINS"):
     CSRF_TRUSTED_ORIGINS = csrf_str.split()
 
@@ -109,6 +114,9 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 
+DATABASES = {"default": dj_database_url.config()}
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
@@ -122,9 +130,6 @@ REST_FRAMEWORK = {
 
 WORDNET_NAME = "wordnet2021"
 YAML_LOADER = SafeLoader
-SPACY_PACKAGES = [
-    "en_core_web_sm",
-]
 DICTIONARIES = [
     {
         "lang": "en",
