@@ -4,7 +4,7 @@ from music21.stream.base import Score, Stream
 
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 from carpet.parser import StrPhrase
-from maas.music import MaasContext, MaasSpeech, SizeMode
+from maas.speech import MaasContext, MaasSpeech, SizeMode
 from maas.utils import EN, lexeme_from_en
 
 # https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies

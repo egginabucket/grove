@@ -2,7 +2,7 @@ from django.db import models
 from jangle.models import LanguageTag
 
 from music21.stream.base import Score, Stream
-from maas.music import (
+from maas.speech import (
     FLEX_NOTE_RE,
     MaasSpeech,
     AbstractFlexNote,
