@@ -12,6 +12,7 @@ from maas.models import Lexeme
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 from carpet.wordnet import wordnet
 
+
 class Phrase(models.Model, AbstractPhrase):
     child_rels: "models.manager.RelatedManager[PhraseComposition]"
     pitch_change = models.CharField(
@@ -87,12 +88,14 @@ class SynsetDefManager(BatchedCreateManager["SynsetDef"]):
 
 
 class SynsetDef(models.Model):
+    """Links a WordNet synset to a Carpet phrase."""
+
     class WordnetPOS(models.TextChoices):
-        ADJ = WordNetCorpusReader.ADJ, "adjective"
-        ADJ_SAT = WordNetCorpusReader.ADJ_SAT, "satellite adjective"
-        ADV = WordNetCorpusReader.ADV, "adverb"
-        NOUN = WordNetCorpusReader.NOUN, "noun"
-        VERB = WordNetCorpusReader.VERB, "verb"
+        ADJ = wordnet.ADJ, "adjective"
+        ADJ_SAT = wordnet.ADJ_SAT, "satellite adjective"
+        ADV = wordnet.ADV, "adverb"
+        NOUN = wordnet.NOUN, "noun"
+        VERB = wordnet.VERB, "verb"
 
     pos = models.CharField(
         "part of speech",
@@ -113,9 +116,9 @@ class SynsetDef(models.Model):
 
     def no_wn_str(self) -> str:
         return f"{self.pos}-{self.wn_offset}"
-    
+
     def __str__(self) -> str:
-        return self.synset.name() # type: ignore
+        return self.synset.name()  # type: ignore
 
     objects = SynsetDefManager()
 

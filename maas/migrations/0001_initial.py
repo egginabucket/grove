@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-import maas.music
+import maas.speech
 
 
 class Migration(migrations.Migration):
@@ -51,7 +51,7 @@ class Migration(migrations.Migration):
                 ("degree", models.SmallIntegerField(default=0)),
                 ("is_ghosted", models.BooleanField(default=False)),
             ],
-            bases=(models.Model, maas.music.AbstractFlexNote),
+            bases=(models.Model, maas.speech.AbstractFlexNote),
         ),
         migrations.CreateModel(
             name="Lexeme",

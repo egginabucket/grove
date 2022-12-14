@@ -1,5 +1,5 @@
 .secrets/
-dev-m21-out/
+dev-m21-out/*
 example-texts/
 dictionary.zip
 

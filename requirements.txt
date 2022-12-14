@@ -14,6 +14,7 @@ django-jangle>=0.3a0
 music21==8.1.0
 nltk==3.7
 parce==0.32.0
+psycopg2==2.9.5
 python-dotenv==0.21.0
 PyYAML==6.0
 #quickly==0.7.0
