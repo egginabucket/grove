@@ -1,3 +1,4 @@
+
 import os
 import warnings
 
@@ -8,9 +9,9 @@ from jangle.models import LanguageTag
 from nltk.corpus.reader import Synset
 from yaml.error import MarkedYAMLError
 
-from carpet.wordnet import wordnet
-from carpet.models import Phrase, SynsetDef
+from carpet.models import SynsetDef
 from carpet.parser import StrPhrase
+from carpet.wordnet import wordnet
 
 
 class DictionaryLoader:
@@ -18,7 +19,7 @@ class DictionaryLoader:
         self.lang = lang
         self.registered_paths = []
 
-    def register(self, path):
+    def register(self, path) -> None:
         if path in self.registered_paths:
             return
         if os.path.isdir(path):
@@ -84,12 +85,3 @@ class DictionaryLoader:
         else:
             raise ValueError(f"invalid path {path}")
         self.registered_paths.append(path)
-
-
-def register_dictionaries(clear=True):
-    if clear:
-        Phrase.objects.all().delete()  # phrases cascade
-    for dict_props in settings.DICTIONARIES:
-        path = dict_props["path"]
-        lang = LanguageTag.objects.get_from_str(dict_props["lang"])
-        DictionaryLoader(lang).register(path)
