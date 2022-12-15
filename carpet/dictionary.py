@@ -19,7 +19,7 @@ class DictionaryLoader:
         self.lang = lang
         self.registered_paths = []
 
-    def register(self, path) -> None:
+    def register(self, path: str) -> None:
         if path in self.registered_paths:
             return
         if os.path.isdir(path):
@@ -65,7 +65,7 @@ class DictionaryLoader:
                                 synset
                             )
                             raise IntegrityError(
-                                f"synset {synset} at {path} "
+                                f"{synset} at {path} "
                                 f"already defined at {existing.source_file}"
                             )
                         except SynsetDef.DoesNotExist:
