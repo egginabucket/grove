@@ -1,6 +1,6 @@
 # Grove
 
-A backend for translating English and other languages into the musical language Maas. Currently in early development.
+A translator for English and other languages into the musical language Maas, built with SpaCy and the Open Multilingual Wordnet.
 
 ---
 
