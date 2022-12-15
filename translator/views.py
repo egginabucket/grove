@@ -6,7 +6,6 @@ from django.conf import settings
 from django.http import (
     FileResponse,
     HttpRequest,
-    HttpResponseNotAllowed,
     JsonResponse,
 )
 from django.shortcuts import render
@@ -61,19 +60,18 @@ def index(request: HttpRequest):
                 form.cleaned_data["add_lyrics"],
             )
             uuid4 = str(uuid.uuid4())
-            path = score.write(
-                "mxl", os.path.join(settings.M21_OUT_DIR, uuid4)
-            )
+            path = os.path.join(settings.M21_OUT_DIR, uuid4)
+            mxl_path = score.write("mxl", path)
             subprocess.call(
                 [
                     "python3",
                     settings.BASE_DIR / "xml2abc_mod.py",
-                    str(path),
+                    str(mxl_path),
                     "-o",
                     settings.M21_OUT_DIR,
                 ]
             )
-            with open(str(path).removesuffix(".mxl") + ".abc") as f:
+            with open(path + ".abc") as f:
                 return render(
                     request,
                     "translator/index.html",
@@ -95,8 +93,9 @@ def index(request: HttpRequest):
 
 def mxl(request: HttpRequest, filename):
     filename += ".mxl"
+    path = os.path.join(settings.M21_OUT_DIR, filename)
     response = FileResponse(
-        open(settings.M21_OUT_DIR / filename, "rb"),
+        open(path, "rb"),
         as_attachment=True,
         filename=filename,
     )
