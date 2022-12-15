@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Generator, Any
-from nltk.corpus.reader import Synset, WordNetCorpusReader
+from typing import Generator
+
 from django.db import models
 from jangle.utils import BatchedCreateManager
-from jangle.models import LanguageTag
+from nltk.corpus.reader import Synset
 
-# from language.models import PartOfSpeech
-from maas.models import Lexeme
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 from carpet.wordnet import wordnet
+from maas.models import Lexeme
 
 
 class Phrase(models.Model, AbstractPhrase):
@@ -113,10 +112,7 @@ class SynsetDef(models.Model):
     @cached_property
     def synset(self) -> Synset:
         return wordnet.synset_from_pos_and_offset(self.pos, self.wn_offset)
-
-    def no_wn_str(self) -> str:
-        return f"{self.pos}-{self.wn_offset}"
-
+        
     def __str__(self) -> str:
         return self.synset.name()  # type: ignore
 
