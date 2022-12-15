@@ -1,16 +1,17 @@
 requires: []
 
-"can big":
+"can [big]":
   - likely.a.01
   - probable.a.01
   - likely.s.02
   - likely.s.03
   - probably.r.01
   - probable.s.02
-"can small": [unlikely.a.02]
-"can small*2": [improbable.a.03]
-"@improbable.a.03 feel": [improbable.s.01, improbable.s.02]
-"count over": [most.a.01, most.a.02, most.r.01]
-"count under": [under.r.05, least.a.01, least.r.01, less.s.02, less.a.03]
-"count small": [little.a.02]
+"[can] big": [probability.n.02]
+"can [small]": [unlikely.a.02, improbable.a.03]
+"[can] small": [improbability.n.01]
+"feel [@improbable.a.03]": [improbable.s.01, improbable.s.02]
+"count [over]": [most.a.01, most.a.02, most.r.01]
+"count [under]": [under.r.05, least.a.01, least.r.01, less.s.02, less.a.03]
+"count [small]": [little.a.02]
 "count some": [some.a.01, some.s.03]

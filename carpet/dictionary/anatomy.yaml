@@ -1,8 +1,9 @@
-requires: []
+requires: [life]
 
-"[water] life": [blood.n.01]
+"[life] water": [blood.n.01]
 "[some] person": [part.n.02]
 
+"[thing] @mind.n.01": [brain.n.01]
 "[house] knot body": [bone.n.01]
 "[@bone.n.01] stuff": [bone.n.02]
 "[house] @bone.n.01": [skeletal_system.n.01]
@@ -20,3 +21,4 @@ requires: []
 "[limb] head": [arm.n.02]
 "[@arm.n.02] person": [arm.n.01]
 "[face] nose": [nose.n.02]
+"[water] come -eye": [tear.n.04]

@@ -1,0 +1,15 @@
+requires: []
+
+"[house] ear":
+  - school.n.01
+  - school.n.02
+  - university.n.02
+  - university.n.03
+  - college.n.02
+  - college.n.03
+"[group] person @school.n.01":
+  - faculty.n.01
+  - school.n.04
+  - university.n.01
+  - college.n.01
+"[person] ear": [student.n.01, learner.n.01]

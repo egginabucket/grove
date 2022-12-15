@@ -145,7 +145,6 @@ break:
   - disrupt.v.02
   - divide.n.01
 bump:
-  - mound.n.04
   - bump.n.01
   - bulge.n.01
   - swelling.n.01
@@ -224,6 +223,7 @@ close: # MAKES GOOD EXAMPLE
   - close.v.13
   - close.v.14
   - finish.n.09
+  - die.v.10
 cloth:
   - fabric.n.01
   - clothing.n.01
@@ -263,6 +263,7 @@ count:
   - amount.n.02
   - measure.n.02
   - amount.v.01
+  - degree.n.01
 crazy:
   - crazy.s.02
   - crazy.s.03
@@ -669,6 +670,7 @@ link:
   - refer.v.02
   - relate.v.04
   - relate.v.05
+  - meet.v.01
 machine:
   - machine.n.01
   - car.n.01

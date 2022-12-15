@@ -1,6 +1,19 @@
 requires: []
 
 "feel!": [cold.s.03, cold.a.13, cold.s.07]
-"[ear] -can -reason": [reason.n.03, rationality.n.01]
-"[ear] -red": [dulcet.s.02]
-"-have -[nose]": [odoriferous.s.01, odoriferous.s.02]
+"big*2": [huge.s.01, massive.s.01, massive.s.04]
+"big*3": [colossal.s.01]
+"small*2": [bantam.s.01]
+"bad*2":
+  - icky.s.01
+  - nasty.a.01
+"bad*3":
+  - atrocious.s.02
+  - severe.s.01
+"good*2":
+  - amazing.s.02
+"ear -can -[reason]": [reason.n.03, rationality.n.01]
+"ear -[red]": [dulcet.s.02]
+"have -[nose]": [odoriferous.s.01, odoriferous.s.02]
+"@odoriferous.s.01 [bad]": [malodorous.a.01]
+"@odoriferous.s.01 [bad*2]": [fetid.s.01]
