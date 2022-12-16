@@ -851,6 +851,7 @@ place: # at
   - place.n.03
   - area.n.01
   - region.n.03
+  - location.n.01 # dos
 plant:
   - plant.n.02
   - vegetable.n.02
@@ -1030,7 +1031,6 @@ thing:
 this: # match the & first determiners in a sentence noun chunks
   - here.n.02
   - here.s.01
-  - here.r.01
   - here.r.02
 time:
   - time.n.05 # dos
