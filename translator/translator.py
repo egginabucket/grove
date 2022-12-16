@@ -13,7 +13,7 @@ from spacy.tokens import Doc, Span, Token
 
 from carpet.base import AbstractPhrase, BasePhrase, Suffix
 from carpet.models import SynsetDef
-from carpet.speech import CarpetSpeech
+from carpet.speech import CarpetSpeech, PitchChange
 from carpet.wordnet import wordnet
 from maas.speech import MaasContext
 from maas.utils import EN, lexeme_from_en
@@ -75,8 +75,9 @@ DEP_ORDERING = [
     "cj",  # de
     "rcmod",
     "relcl",
-    "advmod",
+    "npadvmod" "advmod",
     "advcl",
+    "acl",  # ?
     "dative",
     "part",
     "attr",  # ?
@@ -98,6 +99,8 @@ based on dependency relations.
 Includes the token itself as 'ROOT'.
 """
 NEUTRAL_DEPS = {
+    "ROOT",
+    "nsubj",
     "case",
     "acl",
     "npadvmod",
@@ -112,9 +115,10 @@ NEUTRAL_DEPS = {
     "det",
 }
 """Dependency relations that don't denote a shift in the nucleus tone
-(phrase_up is not called)"""
-UP_DEPS = {"aux", "nsubj"}  # TODO: figure out auxiliaries
+(phrase_down is not called)"""
+UP_DEPS = {"dobj", "pobj"}  # TODO: figure out auxiliaries
 NEG_DEPS = {"neg", "ng"}  # de
+DOWN_ROOTS = {"ROOT", "relcl", "advcl", "acl"}
 ALT_WORDNETS = {
     "ita": ["ita_iwn"],
 }
@@ -313,7 +317,7 @@ class Translation(CarpetSpeech):
             if "3" in person:
                 phrase = BasePhrase(lexeme=IT)
                 if is_personal:
-                    phrase = BasePhrase([phrase, BasePhrase(lexeme=PERSON)])
+                    phrase.lexeme = PERSON
                     if self.ctx.gender_pronouns:
                         if "Fem" in token.morph.get("Gender"):
                             phrase.children.append(BasePhrase(lexeme=FEMALE))
@@ -346,7 +350,7 @@ class Translation(CarpetSpeech):
         }:
             wn_phrase, tokens = self.token_to_phrase_via_wn(token)
             if wn_phrase is not None:
-                phrase = wn_phrase
+                phrase = wn_phrase  # not necessary to wrap bc of how def strs are parsed
                 self.translated_tokens.update(tokens)
             else:
                 is_skipped = True
@@ -374,10 +378,9 @@ class Translation(CarpetSpeech):
                     phrase = BasePhrase([phrase], suffix=Suffix.WHAT)
                 elif child.dep_ in {"nummod", "nmc"}:
                     try:
-                        count = synsets_to_int(self.synsets(child.text))
+                        phrase.count = synsets_to_int(self.synsets(child.text))
                     except ValueError:
-                        count = None  # TODO: let user change?
-                    phrase = BasePhrase([phrase], count=count)
+                        pass
                 else:
                     phrase_token = True
             if phrase_token:
@@ -385,20 +388,27 @@ class Translation(CarpetSpeech):
                     child_phrase_tokens[child.dep_].append(child)
                 else:
                     child_phrase_tokens[child.dep_] = [child]
-
         stream = Score()
         for dep in DEP_ORDERING:
             if dep == "ROOT":
                 if phrase is not None:
-                    stream.append(self.phrase_to_stream(phrase))
-                elif root_m21_obj is not None:
+                    print(token.dep)
+                    if (
+                        token.dep_ in DOWN_ROOTS
+                        and "nsubj" in child_phrase_tokens
+                    ):
+                        print(token, token.dep_)
+                        phrase.pitch_change = PitchChange.DOWN
+                    elif token.has_head():
+                        if token.dep_ in UP_DEPS:
+                            phrase.pitch_change = PitchChange.UP
+                        elif token.dep_ not in NEUTRAL_DEPS:
+                            phrase.pitch_change = PitchChange.DOWN
+                    root_m21_obj = self.phrase_to_stream(phrase)
+                if root_m21_obj is not None:
                     stream.append(root_m21_obj)
             else:
                 for token in child_phrase_tokens.get(dep, []):
-                    if dep in UP_DEPS:
-                        self.phrase_up()
-                    elif dep not in NEUTRAL_DEPS:
-                        self.phrase_down()
                     stream.append(self.token_to_stream(token))
         return stream.flatten()
 
@@ -446,7 +456,10 @@ def translate(
     for sent in doc.sents:
         speech = Translation(ctx, sent)
         stream.append(speech.stream)
-        print("Skipped tokens:", ", ".join(f"{t.text} {t.pos_}" for t in speech.skipped_tokens))
+        print(
+            "Skipped tokens:",
+            ", ".join(f"{t.text} {t.pos_}" for t in speech.skipped_tokens),
+        )
         print("Entities:", speech.ent_phrases)
     stream = stream.flatten()
     last = stream.last()

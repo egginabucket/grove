@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandParser
 from jangle.models import LanguageTag
 
-from maas.models import Lexeme, LexemeTranslation  # , LexemeFlexNote
+from maas.models import Lexeme, LexemeTranslation, NativeLang
 
 
 class Command(BaseCommand):
@@ -30,10 +30,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
-        NATIVE_LANG, _ = LanguageTag.objects.get_or_create_from_str(
-            "x-maas-native"
-        )
-
         if options["clear"]:
             Lexeme.objects.all().delete()  # phrases cascade
         native_lexemes = []
@@ -50,7 +46,7 @@ class Command(BaseCommand):
                         LexemeTranslation(
                             lexeme=lexeme,
                             word=native_word,
-                            lang=NATIVE_LANG,
+                            lang=NativeLang(),
                         )
                     )
                     if options["native_to_en"]:
@@ -68,13 +64,13 @@ class Command(BaseCommand):
             if os.path.isfile(full_path) and full_path.endswith(".yaml"):
                 lang_tag = fn.split(".")[0]
                 lang, _ = LanguageTag.objects.get_or_create_from_str(lang_tag)
-                if lang == NATIVE_LANG:
+                if lang == NativeLang():
                     continue
                 with open(path) as f:
                     LexemeTranslation.objects.bulk_create(
                         LexemeTranslation(
                             lexeme=LexemeTranslation.objects.get(
-                                lang=NATIVE_LANG, term=native_term
+                                lang=NativeLang(), term=native_term
                             ).lexeme,
                             term=translated_term,
                             lang=lang,

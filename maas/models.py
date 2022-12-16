@@ -1,5 +1,6 @@
 from django.db import models
 from jangle.models import LanguageTag
+from functools import cache
 
 from music21.stream.base import Score, Stream
 from maas.speech import (
@@ -9,6 +10,12 @@ from maas.speech import (
     Tone,
     SizeMode,
 )
+
+class NativeLang:
+    def __new__(self) -> LanguageTag:
+        if self._lang is None:
+            self._lang, _ = LanguageTag.objects.get_or_create_from_str("x-maas-native")
+        return self._lang
 
 
 class FlexNote(models.Model, AbstractFlexNote):
@@ -52,7 +59,7 @@ class Lexeme(models.Model):
         flex_notes = self.get_flex_notes()
         if exclude_ghosted:
             flex_notes = filter(lambda flex: not flex.is_ghosted, flex_notes)
-        
+
         if notes := [flex.get_note(speech) for flex in flex_notes]:
             stream = Score(notes)
         else:
@@ -64,7 +71,10 @@ class Lexeme(models.Model):
         return stream
 
     def translate(self, lang: LanguageTag) -> str:
-        return self.translations.get(lang=lang).word
+        try:
+            return self.translations.get(lang=lang).word
+        except LexemeTranslation.DoesNotExist:
+            return self.translations.get(lang=NativeLang()).word
 
     def __str__(self):
         return self.translate(LanguageTag.objects.get_from_str("en"))
