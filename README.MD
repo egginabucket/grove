@@ -51,12 +51,15 @@ Download the WordNet:
 ```
 python
 >>> import nltk
->>> nltk.download("wordnet")
->>> nltk.download("wordnet2021")
+>>> nltk.download(['omw-1.4', 'wordnet', 'wordnet2021'])
 ```
 
-Next, extract `corpora/wordnet.zip` (usually in nltk_data in your home dir) into `corpora` and `corpora/wordnet2021`.
-Hopefully this won't be necessary after the next nltk release ([see this gh issue](https://github.com/nltk/nltk/issues/30510))
+Next, go to your nltk_data folder (usually in your home folder) and extract
+`corpora/wordnet2021.zip` into `corpora`,
+and `corpora/wordnet.zip` into `corpora` and the new `corpora/wordnet2021` folder.
+Unfortunately the new fix for this
+([see this issue](https://github.com/nltk/nltk/issues/30510))
+in NLTK 3.8 doesn't seem to work with OMW :(
 
 Register the dictionary:
 
@@ -159,7 +162,7 @@ REFERENCES COMING SOON
 - [PyPI](https://pypi.org/project/uvicorn/)
 - [Source](https://github.com/encode/uvicorn/)
 
-## xml2abc
+### xml2abc
 
 - [Homepage](https://wim.vree.org/svgParse/xml2abc.html)
 
