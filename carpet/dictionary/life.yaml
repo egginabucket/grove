@@ -1,8 +1,9 @@
-requires: []
+requires: [time]
 
 "[type] girl boy": [gender.n.01, sex.n.02, sex.n.04] # :(
 "[house] inside person": [mind.n.01, mind.n.07]
 "[open] life": [birth.n.01, birth.n.02, parturition.n.01, give_birth.v.01]
+"[@day.n.01] @birth.n.01": [birthday.n.01, birthday.n.02]
 "[close] life":
   - death.n.01
   - death.n.02
@@ -18,6 +19,8 @@ requires: []
   - sleep_together.v.01
 "[time] child": [childhood.n.01]
 "@kill.v.01 person -cause": [murder.n.01, murder.v.01, homicide.n.01]
+"[person] -cause -@death.n.01": [killer.n.01]
+"[person] -cause -@murder.n.01": [murderer.n.01]
 "[person] like +same @gender.n.01": [homosexual.n.01, gay.s.06]
 "[person] girl like -girl": [lesbian.n.01, lesbian.s.01]
 "[person] put @gender.n.01":

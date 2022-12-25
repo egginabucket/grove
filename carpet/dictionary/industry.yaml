@@ -1,3 +1,4 @@
 requires: [material]
 
 "[pocket] -@mineral.n.01": [pit.n.09]
+"[person] work": [worker.n.01]

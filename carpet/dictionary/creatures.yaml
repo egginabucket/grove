@@ -8,8 +8,16 @@ requires: [anatomy]
 "[animal] @warm-blooded.a.01": [mammal.n.01]
 
 "[@mammal.n.01] big": [cow.n.02]
+"[animal] -eat -plant": [herbivore.n.01]
+"[@mammal.n.01] -eat -animal*2": [carnivore.n.01]
+"[animal] -eat -animal*2": [carnivore.n.02]
 "[animal] body big*2 nose big": [elephant.n.01]
 "[animal] air": [bird.n.01]
+"[animal] water": [marine_animal.n.01]
+"[@mammal.n.01] water": [aquatic_mammal.n.01]
+"[@marine_animal.n.01] @cold-blooded.a.01": [fish.n.03]
+"[get] @fish.n.03": [fish.v.02]
+
 "[@mammal.n.01] small have -@tooth.n.01*2": [rodent.n.01]
 # TODO: more rodents
 "[animal] limb! path": [snake.n.01]

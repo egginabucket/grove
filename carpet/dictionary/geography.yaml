@@ -1,6 +1,7 @@
 requires: []
 
 "[place] this": [here.r.01, here.r.03]
+"[place] all": [everywhere.r.01]
 "[place] water": [body_of_water.n.01]
 "[@body_of_water.n.01] mouth": [mouth.n.04]
 "[house] -@body_of_water.n.01": [water_system.n.01]

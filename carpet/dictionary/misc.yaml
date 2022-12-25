@@ -11,5 +11,7 @@ requires: []
   - there.r.01
   - there.r.03
   - away.r.01
+"[house] way": [plan.n.01]
+"[use] mistake": [misuse.n.01]
 
 "go -air": [breeze.n.01]

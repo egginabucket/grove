@@ -3,6 +3,7 @@ requires: [creatures, colour]
 "eat nose": [taste.n.01, taste.v.02, taste.v.05]
 "water fire": [boil.v.01, boil.v.03]
 
+"[stuff] eat": [foodstuff.n.02]
 "[eat] red":
   - dessert.n.01
   - sweet.n.02
@@ -10,10 +11,10 @@ requires: [creatures, colour]
   - sweetness.n.02
   - sweet.a.08
 "[eat] plant": [vegetable.n.01]
-"[eat] fruit": [fruit.n.01]
+"[fruit] eat": [edible_fruit.n.01]
 "[eat] body": [bread.n.01]
-"[eat] come -animal": [meat.n.01]
-"[water] come -plant": [juice.n.01]
+"[eat] animal": [meat.n.01]
+"[water] plant": [juice.n.01]
 "[eat] box water -fruit": [smoothie.n.02]
 "[group] eat plant": [salad.n.01]
 "[water] group eat": [soup.n.01]
@@ -21,6 +22,6 @@ requires: [creatures, colour]
 "[eat] between -@bread.n.01#2": [sandwich.n.01]
 "[eat] @orange.s.01": [orange.n.01]
 
-"[eat] @bird.n.01":  [bird.n.02]
+"[eat] @fish.n.03": [fish.n.04]
+"[eat] @bird.n.01": [bird.n.02]
 "[eat] @eel.n.02": [eel.n.01]
-

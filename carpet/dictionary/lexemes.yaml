@@ -15,6 +15,8 @@ air:
   - vapor.n.01
 all:
   - all.s.01
+  - every.s.01
+  - every.s.02
 and: 
   - besides.r.02 # [and, also, too]
   # - beyond.r.03
@@ -118,6 +120,8 @@ boy:
   - male.s.02
   - male.a.03
   - man.n.01
+  - masculine.n.01
+  - masculine.a.03
 break:
   - interruption.n.02
   - rupture.n.02
@@ -178,6 +182,9 @@ child:
   - young.n.01
   - baby.n.01
   - baby.n.06
+  - juvenile.n.01
+  - adolescent.s.02
+  - juvenile.a.02
 circle: # left "with respect to"
   - circle.n.01
   - circle.n.03
@@ -336,6 +343,8 @@ eat:
   - food.n.02
   - devour.v.03
   - partake.v.03
+  - comestible.n.01
+  - edible.a.01 # move ?
 eye:
   - eye.n.01
   - eye.v.01
@@ -420,6 +429,7 @@ friend:
   - gracious.a.01
   - benignant.s.01
 fruit:
+  - fruit.n.01 # its back !! ^-^
   - yield.n.03
   - fruit.n.03
   - fruit.v.02
@@ -454,6 +464,9 @@ girl:
   - female.s.02
   - female.s.03
   - woman.n.01
+  - feminine.n.01
+  - feminine.a.01
+  - womanly.a.01
 go:
   - go.v.02
   - go.v.03
@@ -767,6 +780,7 @@ nose:
   - intuit.v.01
 not:
   - not.r.01
+  - nothing.r.01
 only:
   - lone.s.03
   - alone.s.03
@@ -1008,6 +1022,8 @@ talk:
   - address.v.01
   - address.v.02
   - address.v.09
+  - speech.n.02
+  - speech.n.03
 that: # match dets for all noun chunks after the first in a sent
   - there.r.02
   #- other.a.01
@@ -1115,6 +1131,7 @@ water:
   - liquid.s.05
   - fluent.s.01
   - soup.n.02
+  - marine.a.01
 way:
   - manner.n.01
   - means.n.01

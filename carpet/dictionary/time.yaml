@@ -2,6 +2,7 @@ requires: []
 
 "[time] sleep": [sleep.n.03]
 "[story] time": [sequence.n.02]
+"[thing] place time": [event.n.01]
 
 "[time] forward": [future.n.01, ahead.r.02, ahead.r.04, ahead.r.06]
 "[time] back": [past.n.01, back.r.04]
