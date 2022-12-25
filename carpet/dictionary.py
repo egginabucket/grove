@@ -1,6 +1,5 @@
-
-import os
 import warnings
+from pathlib import Path
 
 import yaml
 from django.conf import settings
@@ -19,40 +18,40 @@ class DictionaryLoader:
         self.lang = lang
         self.registered_paths = []
 
-    def register(self, path: str) -> None:
+    def register(self, path: Path) -> None:
         if path in self.registered_paths:
             return
-        if os.path.isdir(path):
-            for subpath in os.listdir(path):
-                self.register(os.path.join(path, subpath))
-        elif os.path.isfile(path):
-            base_name = os.path.basename(path)
-            if base_name.split(os.extsep)[-1] != "yaml":
-                warnings.warn(f"skipping file {path}")
+        if not path.exists():
+            return
+        if path.is_dir():
+            for subpath in path.glob("*"):
+                self.register(subpath)
+        elif path.is_file():
+            if path.suffix not in (".yaml", ".yml"):
+                warnings.warn(f"skipping {path}")
                 return
-            with open(path) as f:
+            with path.open() as f:
                 try:
                     defs: dict = yaml.load(f.read(), settings.YAML_LOADER)
                 except MarkedYAMLError as e:
                     raise ValueError(f"invalid yaml file at {path}") from e
-                requirements = defs.pop("requires", [])
-                for requirement in requirements:
-                    requirement_path = os.path.join(
-                        os.path.dirname(path),
-                        os.extsep.join([requirement, "yaml"]),
-                    )
-                    self.register(requirement_path)
+                for requirement in defs.pop("requires", []):
+                    assert isinstance(requirement, str)
+                    req_path = (path.parent / requirement).resolve()
+                    self.register(req_path.with_suffix(".yaml"))
+                    self.register(req_path.with_suffix(".yml"))
                 for phrase, synset_names in defs.items():
-                    phrase: str
-                    synset_names: list[str]
-                    carpet_phrase = StrPhrase(self.lang, phrase)
+                    assert isinstance(phrase, str)
+                    assert isinstance(synset_names, list)
+                    carpet_phrase = StrPhrase(phrase, self.lang)
                     try:
                         phrase_obj = carpet_phrase.save()
                     except Exception as e:
                         raise ValueError(f"at '{path}'") from e
                     for name in synset_names:
+                        assert isinstance(name, str)
                         try:
-                            synset: Synset = wordnet.synset(name)
+                            synset: Synset = wordnet.synset(name)  # type: ignore
                         except ValueError as e:
                             raise ValueError(f"synset '{name}'") from e
                         if synset.name() != name:
@@ -74,7 +73,7 @@ class DictionaryLoader:
                             phrase=phrase_obj,
                             pos=synset.pos(),
                             wn_offset=synset.offset(),
-                            source_file=path,
+                            source_file=path.suffix,
                         )
                         try:
                             def_.save()

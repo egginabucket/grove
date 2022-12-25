@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import yaml
 from django.conf import settings
@@ -32,50 +32,54 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         if options["clear"]:
             Lexeme.objects.all().delete()  # phrases cascade
-        native_lexemes = []
-        path = options["path"]
-        filenames = os.listdir(path)
-        if "x-maas-native.yaml" in filenames:
-            EN, _ = LanguageTag.objects.get_or_create_from_str("en")
-            with open(os.path.join(path, "x-maas-native.yaml")) as f:
-                for native_word, flex_string in yaml.load(
-                    f.read(), settings.YAML_LOADER
-                ).items():
-                    lexeme = Lexeme.objects.create()
-                    native_lexemes.append(
-                        LexemeTranslation(
-                            lexeme=lexeme,
-                            word=native_word,
-                            lang=NativeLang(),
-                        )
-                    )
-                    if options["native_to_en"]:
+
+        path = Path(options["path"]).resolve()
+        lang_paths: dict[LanguageTag, Path] = {}
+        for fn in path.rglob("*"):
+            if not fn.is_file():
+                continue
+            if fn.suffix not in (".yml", ".yaml"):
+                continue
+            lang_tag = fn.name.split(".")[0]
+            lang, _ = LanguageTag.objects.get_or_create_from_str(lang_tag)
+            if lang == NativeLang():
+                en = LanguageTag.objects.get_from_str("en")
+                native_lexemes = []
+                with fn.open() as f:
+                    for native_word, flex_string in yaml.load(
+                        f.read(), settings.YAML_LOADER
+                    ).items():
+                        lexeme = Lexeme.objects.create()
                         native_lexemes.append(
                             LexemeTranslation(
                                 lexeme=lexeme,
                                 word=native_word,
-                                lang=EN,
+                                lang=NativeLang(),
                             )
                         )
-                        lexeme.create_flex_notes(flex_string)
-            LexemeTranslation.objects.bulk_create(native_lexemes)
-        for fn in filenames:
-            full_path = os.path.join(path, fn)
-            if os.path.isfile(full_path) and full_path.endswith(".yaml"):
-                lang_tag = fn.split(".")[0]
-                lang, _ = LanguageTag.objects.get_or_create_from_str(lang_tag)
-                if lang == NativeLang():
-                    continue
-                with open(path) as f:
-                    LexemeTranslation.objects.bulk_create(
-                        LexemeTranslation(
-                            lexeme=LexemeTranslation.objects.get(
-                                lang=NativeLang(), term=native_term
-                            ).lexeme,
-                            term=translated_term,
-                            lang=lang,
-                        )
-                        for native_term, translated_term in yaml.load(
-                            f.read(), settings.YAML_LOADER
-                        )
+                        if options["native_to_en"]:
+                            native_lexemes.append(
+                                LexemeTranslation(
+                                    lexeme=lexeme,
+                                    word=native_word,
+                                    lang=en,
+                                )
+                            )
+                            lexeme.create_flex_notes(flex_string)
+                LexemeTranslation.objects.bulk_create(native_lexemes)
+            else:
+                lang_paths[lang] = fn
+        for lang, fn in lang_paths.items():
+            with fn.open() as f:
+                LexemeTranslation.objects.bulk_create(
+                    LexemeTranslation(
+                        lexeme=LexemeTranslation.objects.get(
+                            lang=NativeLang(), term=native_term
+                        ).lexeme,
+                        term=translated_term,
+                        lang=lang,
                     )
+                    for native_term, translated_term in yaml.load(
+                        f.read(), settings.YAML_LOADER
+                    )
+                )
