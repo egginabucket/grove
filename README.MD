@@ -44,8 +44,6 @@ Load the Maas lexicon:
 `python manage.py loadlexicon --native-to-en`
 (use -h for more info)
 
-Set the `MAAS_LOADED` environment variable to anything to enable the rest of the apps.
-
 Download the WordNet:
 
 ```
