@@ -2,3 +2,4 @@ requires: []
 
 "[fruit] money": [wages.n.01]
 "[house] money": [economy.n.01] # dos
+"[tip] money": [monetary_unit.n.01]

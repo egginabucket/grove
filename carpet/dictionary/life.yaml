@@ -1,9 +1,11 @@
 requires: [time]
 
+"[thing] life": [living_thing.n.01, organism.n.01]
+"[house] -same life": [organism.n.02]
 "[type] girl boy": [gender.n.01, sex.n.02, sex.n.04] # :(
 "[house] inside person": [mind.n.01, mind.n.07]
 "[open] life": [birth.n.01, birth.n.02, parturition.n.01, give_birth.v.01]
-"[@day.n.01] @birth.n.01": [birthday.n.01, birthday.n.02]
+"[@day.n.03] @birth.n.01": [birthday.n.01, birthday.n.02]
 "[close] life":
   - death.n.01
   - death.n.02

@@ -338,7 +338,7 @@ ear:
   - sound.n.02
 eat:
   - eat.v.01
-  - consume.v.05
+  - consume.v.02
   - food.n.01
   - food.n.02
   - devour.v.03
@@ -455,6 +455,7 @@ get:
   - detect.v.01
   - discover.v.03
   - fall_upon.v.01
+  - consume.v.05
 girl:
   - girl.n.01
   - girl.n.05
@@ -641,6 +642,7 @@ left:
 life:
   - life.n.01
   - life.n.02
+  - living.a.06
   - animation.n.01
   - liveliness.n.02
   - energy.n.02
@@ -737,6 +739,7 @@ money:
   - money.n.02
   - money.n.03
   - currency.n.01
+  - monetary.a.01
 mouth:
   - mouth.n.01
   - mouth.n.02
@@ -971,6 +974,10 @@ some:
   - region.n.01
 sound: # [sound, ruckus, tumult]
   - sound.n.01 # dos
+  - sound.n.03
+  - sound.n.04 # ?
+  - audio.n.01
+  - song.n.02
 space: # remove ?
   - space.n.02
   - space.n.03 # dos
@@ -1024,6 +1031,7 @@ talk:
   - address.v.09
   - speech.n.02
   - speech.n.03
+  - message.n.01
 that: # match dets for all noun chunks after the first in a sent
   - there.r.02
   #- other.a.01
@@ -1070,6 +1078,7 @@ tool: # added origin
   - instrument.n.02
   - tool.v.03
   - tool.v.04
+  - device.n.01
 "true":
   - true.r.01 # dos
   - true.s.03

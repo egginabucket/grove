@@ -6,12 +6,15 @@ requires: []
   - want.v.05
   - lack.n.01
   - necessitate.v.01
-"place that":
+"[place] that":
   - there.n.01
   - there.r.01
   - there.r.03
   - away.r.01
 "[house] way": [plan.n.01]
 "[use] mistake": [misuse.n.01]
+"[tip] talk": [language_unit.n.01]
 
-"go -air": [breeze.n.01]
+"[air] go": [breeze.n.01]
+"know!": [nonsense.s.01]
+"[talk] @nonsense.s.01": [nonsense.n.01]

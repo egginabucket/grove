@@ -1,6 +1,6 @@
 requires: [life]
 
-"[life] water": [blood.n.01]
+"[water] life": [blood.n.01]
 "[some] person": [part.n.02]
 
 "[thing] @mind.n.01": [brain.n.01]

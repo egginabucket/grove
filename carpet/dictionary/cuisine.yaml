@@ -10,6 +10,8 @@ requires: [creatures, colour]
   - sweet.n.03
   - sweetness.n.02
   - sweet.a.08
+"[eat] water": [beverage.n.01, drink.v.01]
+"[tip] @beverage.n.01": [drink.n.01]
 "[eat] plant": [vegetable.n.01]
 "[fruit] eat": [edible_fruit.n.01]
 "[eat] body": [bread.n.01]

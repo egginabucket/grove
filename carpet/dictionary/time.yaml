@@ -10,7 +10,13 @@ requires: []
 "[tip] time small*3": [second.n.01]
 "[tip] time small*2": [minute.n.01, moment.n.02]
 "[tip] time small": [hour.n.01]
-"[tip] time": [day.n.01, point.n.06]
+"[tip] time":
+  - day.n.02
+  - day.n.03
+  - calendar_day.n.01
+  - point.n.06
+  - time_period.n.01
+"[tip] time light": [day.n.05]
 "[tip] time big": [week.n.01]
 "[tip] time big*2": [calendar_month.n.01]
 "[tip] time big*3": [year.n.01]
@@ -19,7 +25,7 @@ requires: []
 "[tip] time big*6": [millennium.n.01] # dos
 "[tip] time big*7": [eon.n.01]
 
-"@day.n.01#30": [month.n.02]
+"@day.n.02#30": [month.n.02]
 
 "[time] -this":
   - now.n.01
@@ -29,17 +35,17 @@ requires: []
   - immediately.r.01
   - now.r.07
   - here.r.04
-"[@day.n.01] -this": [today.n.01, today.n.02, today.r.02]
-"[@day.n.01] -this under": [yesterday.n.01, yesterday.r.01]
-"[@day.n.01] -this over": [tomorrow.n.01]
+"[@day.n.02] -this": [today.n.01, today.n.02, today.r.02]
+"[@day.n.02] -this under": [yesterday.n.01, yesterday.r.01]
+"[@day.n.02] -this over": [tomorrow.n.01]
 
-"[that] -@day.n.01#1": [monday.n.01]
-"[that] -@day.n.01#2": [tuesday.n.01]
-"[that] -@day.n.01#3": [wednesday.n.01]
-"[that] -@day.n.01#4": [thursday.n.01]
-"[that] -@day.n.01#5": [friday.n.01]
-"[that] -@day.n.01#1!": [saturday.n.01]
-"[that] -@day.n.01#2!": [sunday.n.01]
+"[that] -@day.n.02#1": [monday.n.01]
+"[that] -@day.n.02#2": [tuesday.n.01]
+"[that] -@day.n.02#3": [wednesday.n.01]
+"[that] -@day.n.02#4": [thursday.n.01]
+"[that] -@day.n.02#5": [friday.n.01]
+"[that] -@day.n.02#1!": [saturday.n.01]
+"[that] -@day.n.02#2!": [sunday.n.01]
 
 "[that] -@calendar_month.n.01#1": [january.n.01]
 "[that] -@calendar_month.n.01#2": [february.n.01]
