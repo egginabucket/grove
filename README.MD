@@ -141,6 +141,7 @@ REFERENCES COMING SOON
 ### Open Multilingual Wordnet
 
 - [Original Site (down)](http://compling.hss.ntu.edu.sg/omw/)
+- [New Site](https://omwn.org/)
 - [Blog Post](https://blogs.ntu.edu.sg/dh/project/open-multilingual-wordnet/)
 
 ### Redis
