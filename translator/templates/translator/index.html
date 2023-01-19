@@ -21,7 +21,7 @@
       }
       function textareaKeyDown(evt) {
         if (evt ? evt.shiftKey : event.shiftKey) {
-          return
+          return;
         }
         const keyCode = evt
           ? evt.which
@@ -54,7 +54,7 @@
         <span class="side-options">
           <select required name="lang" id="lang">
             {% for lang in langs %}
-            <option value="{{lang.text}}">{{ lang.description }}</option>
+            <option value="{{ lang.text }}">{{ lang.description }}</option>
             {% endfor %}
           </select>
           <input
@@ -66,6 +66,18 @@
         </span>
       </div>
       <div id="advanced" style="display: none">
+        <div>
+          <input type="checkbox" name="use_ner" id="useNER" checked />
+          <label for="useNER">
+            Use named entity recognition (spaCy)
+          </label>
+        </div>
+        <div>
+          <input type="checkbox" name="show_det" id="showDet" />
+          <label for="showDet">
+            Include determiners
+          </label>
+        </div>
         <div>
           <input type="checkbox" name="add_lyrics" id="addLyrics" checked />
           <label for="addLyrics">
@@ -83,12 +95,7 @@
           </label>
         </div>
         <div>
-          <input
-            type="checkbox"
-            name="gender_pronouns"
-            id="genderPronouns"
-            checked
-          />
+          <input type="checkbox" name="gender_pronouns" id="genderPronouns" />
           <label for="genderPronouns"> Gender personal pronouns </label>
         </div>
         <div>
@@ -125,7 +132,7 @@
             min="0"
             required
           />
-          <label for="maxLGrouping"> Max leftwards lemma grouping</label>
+          <label for="maxLGrouping"> Max leftwards token grouping</label>
         </div>
         <div>
           <input
@@ -137,7 +144,7 @@
             min="0"
             required
           />
-          <label for="maxRGrouping"> Max rightwards lemma grouping</label>
+          <label for="maxRGrouping"> Max rightwards token grouping</label>
         </div>
         <div>
           <input type="text" name="key" id="musicKey" value="B" required />
@@ -214,10 +221,31 @@
     </form>
     {% if abc %}
     <div>
-      <div id="parms">{{parms}}</div>
-      <div class="abc">{{abc}}</div>
+      <div id="parms">{{ parms }}</div>
+      <div class="abc">{{ abc }}</div>
     </div>
-    <a href="{{mxl_url}}">Download MXL file</a>
+    <a href="{{ mxl_url }}">Download MXL file</a>
     {% endif %}
+    <ul>
+      {% for token in histories %}
+      <li>
+        <b>{{ token.token.text }}</b>
+        <i>{{ token.token.pos_ }}</i>
+        {% if token.history %}
+        {% for history in token.history %}
+        &rarr; <code>{{ history }}</code>
+        {% endfor %}
+        {% elif token.skipped %}
+        &mdash; skipped
+        {% elif token.merged_token %}
+        &mdash; merged with
+        <b>{{ token.merged_token.text }}</b>
+        <i>{{ token.merged_token.pos_}}</i>
+        {% elif token.token.pos_ != "PUNCT" %}
+        &mdash; unreached
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
   </body>
 </html>

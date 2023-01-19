@@ -5,20 +5,17 @@ import os
 import subprocess
 from typing import Generator, Optional
 
-from nltk.corpus import wordnet2021
 from nltk.corpus.reader import Synset
-
-from spacy.displacy import serve
 from spacy.glossary import GLOSSARY
-from spacy.tokens import Token
 from spacy.tokens.doc import Doc
 
+from carpet.wordnet import wordnet
 
 OLD_CARPET_YAML_KEY_RE = r"\w+\.\w.\d{2}: "
 
 
 def show_synsets(lemma: str, **kwargs):
-    for synset in wordnet2021.synsets(lemma, **kwargs):
+    for synset in wordnet.synsets(lemma, **kwargs):
         synset: Synset
         print(
             "%s: %s (%s%s)"
@@ -40,6 +37,7 @@ def explain_token_dicts(doc: Doc) -> Generator[dict, None, None]:
         row = {
             "text": token.text,
             "lemma": token.lemma_,
+            "norm": token.norm_,
             "dep": token.dep_,
             "tag": token.tag_,
             "pos": token.pos_,
@@ -47,7 +45,7 @@ def explain_token_dicts(doc: Doc) -> Generator[dict, None, None]:
             "morph": str(token.morph),
         }
         for col in ("dep", "tag", "pos"):
-            row[col + " exp"] = GLOSSARY[row[col]]
+            row[col + " exp"] = GLOSSARY.get(row[col], "?")
         yield row
 
 
@@ -56,9 +54,11 @@ def explain_doc(
 ):
     if not path:
         path = "/tmp/grove-dev-doc-explain.csv"
-    fieldnames = "head,text,lemma,dep,dep exp,tag,tag exp,pos,pos exp,morph"
+    fieldnames = (
+        "head,text,lemma,norm,dep,dep exp,tag,tag exp,pos,pos exp,morph"
+    ).split(",")
     with open(path, "w") as f:
-        writer = csv.DictWriter(f, fieldnames.split(","))
+        writer = csv.DictWriter(f, fieldnames)
         writer.writeheader()
         writer.writerows(explain_token_dicts(doc))
     displayer(path)

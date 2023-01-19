@@ -5,14 +5,14 @@ from music21.stream.base import Score, Stream
 from carpet.base import AbstractPhrase, PitchChange, Suffix
 from carpet.parser import StrPhrase
 from maas.speech import MaasContext, MaasSpeech, SizeMode
-from maas.utils import EN, lexeme_from_en
+from maas.models import NativeLang, Lexeme
 
 # https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
 # https://abjad.github.io/api/abjad/index.html#abjad
 
-COUNT = lexeme_from_en("count")
-NOT = lexeme_from_en("not")
-WHAT = lexeme_from_en("what")
+COUNT, NOT, WHAT = [
+    StrPhrase(l).lexeme or Lexeme() for l in ["count", "not", "what"]
+]
 
 
 class CarpetSpeech(MaasSpeech):
@@ -52,15 +52,16 @@ class CarpetSpeech(MaasSpeech):
             stream.insert(0, Slur(stream.elements))
         return stream
 
+
 def str_to_score(
     ctx: MaasContext,
     phrase_str: str,
-    lang = EN,
-    add_lyrics = False
+    lang=NativeLang(),
+    add_lyrics=False,
 ) -> Score:
     if add_lyrics:
         ctx.lyrics_lang = lang
-    phrase = StrPhrase(lang, phrase_str)
+    phrase = StrPhrase(phrase_str, lang)
     speech = CarpetSpeech(ctx)
     stream = speech.phrase_to_stream(phrase)
     return ctx.build_score(str(phrase), stream)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Any, Generator, Optional
 import warnings
 
@@ -33,19 +34,18 @@ class Suffix(models.TextChoices):
 
 class AbstractPhrase(StrReprCls):
     is_primary = False
-    pitch_change = None
+    pitch_change: Optional[str] = None
     multiplier = 1
-    count = None
-    suffix = None
+    count: Optional[int] = None
+    suffix: Optional[str] = None
     lexeme: Optional[Lexeme] = None
 
-    def get_children(self) -> Generator[AbstractPhrase, None, None]:
+    def _get_children(self) -> Generator[AbstractPhrase, None, None]:
         ...
 
     def modified_children(self) -> Generator[AbstractPhrase, None, None]:
-        children = list(self.get_children())
-        for child in children:
-            if child.is_primary or len(children) == 1:
+        for child in self.children:
+            if child.is_primary or len(self.children) == 1:
                 child.multiplier *= self.multiplier
                 if self.suffix:
                     if child.suffix:
@@ -72,41 +72,39 @@ class AbstractPhrase(StrReprCls):
                 "suffix",
             ]
         }
-        props["children"] = [c.serialize() for c in self.get_children()]
+        props["children"] = [c.serialize() for c in self.children]
         return props
 
-    def _unwrapped_str(self) -> str:
-        if self.lexeme:
-            return str(self.lexeme)
-        else:
-            return " ".join(map(str, self.get_children()))
+    @cached_property
+    def children(self) -> list[AbstractPhrase]:
+        return list(self._get_children())
 
     def __str__(self):
-        open_str = ""
-        close_str = ""
-        if self.lexeme is None and not self.is_primary:
-            open_str += OPEN_CHAR
-        if self.is_primary:
-            open_str += PRIMARY_OPEN_CHAR
-            close_str += PRIMARY_CLOSE_CHAR
-        if self.lexeme is None and not self.is_primary:
-            close_str += CLOSE_CHAR
-        if self.count:
-            close_str += COUNT_CHAR + str(self.count)
-        if self.multiplier != 1:
-            close_str += MULTIPLIER_CHAR + str(self.multiplier)
-        return "".join(
-            filter(
-                None,
-                [
-                    self.pitch_change,
-                    open_str,
-                    self._unwrapped_str(),
-                    close_str,
-                    self.suffix,
-                ],
-            )
+        do_wrap = (
+            self.lexeme is None
+            and (not self.is_primary)
+            and len(self.children) != 1
         )
+        s = ""
+        if self.pitch_change is not None:
+            s += self.pitch_change
+        if do_wrap:
+            s += OPEN_CHAR
+        if self.is_primary:
+            s += PRIMARY_OPEN_CHAR
+        if self.lexeme is not None:
+            s += str(self.lexeme)
+        else:
+            s += " ".join(map(str, self.children))
+        if self.is_primary:
+            s += PRIMARY_CLOSE_CHAR
+        if do_wrap:
+            s += CLOSE_CHAR
+        if self.multiplier != 1:
+            s += MULTIPLIER_CHAR + str(self.multiplier)
+        if self.suffix is not None:
+            s += self.suffix
+        return s
 
 @dataclass(repr=False)
 class BasePhrase(AbstractPhrase):
@@ -117,6 +115,3 @@ class BasePhrase(AbstractPhrase):
     multiplier: int = 1
     count: Optional[int] = None
     suffix: Optional[str] = None
-
-    def get_children(self) -> Generator[AbstractPhrase, None, None]:
-        yield from self.children

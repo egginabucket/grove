@@ -31,13 +31,20 @@ def index(request: HttpRequest):
             best_langs.append(lang)
         else:
             langs.append(lang)
-    langs = sorted(best_langs, key=lambda l: req_langs.index(l.text)) + langs
+    langs = (
+        list(sorted(best_langs, key=lambda l: req_langs.index(l.text))) + langs
+    )
     if request.method == "POST":
         form = TranslationForm(request.POST)
         if form.is_valid():
             lang = LanguageTag.objects.get_from_str(form.cleaned_data["lang"])
+            if langs[0] != lang:
+                langs.remove(lang)
+                langs.insert(0, lang)
             ctx = TranslatorContext(
                 key=Key(form.cleaned_data["key"]),
+                use_ner=form.cleaned_data["use_ner"],
+                show_det=form.cleaned_data["show_det"],
                 write_slurs=form.cleaned_data["write_slurs"],
                 gender_pronouns=form.cleaned_data["gender_pronouns"],
                 sub_rel_ents=form.cleaned_data["sub_rel_ents"],
@@ -53,12 +60,24 @@ def index(request: HttpRequest):
                 .parse()
                 .stream.flatten(),
             )
-            score = translate(
+            score, speeches = translate(
                 ctx,
                 form.cleaned_data["text"],
                 lang,
                 form.cleaned_data["add_lyrics"],
             )
+            histories = []
+            for speech in speeches:
+                for token in speech.span:
+                    histories.append(
+                        {
+                            "token": token,
+                            "history": speech.token_history.get(token),
+                            "skipped": token in speech.skipped_tokens,
+                            "merged_token": speech.merged_tokens.get(token),
+                        }
+                    )
+
             uuid4 = str(uuid.uuid4())
             path = os.path.join(settings.M21_OUT_DIR, uuid4)
             mxl_path = score.write("mxl", path)
@@ -78,6 +97,7 @@ def index(request: HttpRequest):
                     {
                         "langs": langs,
                         "abc": f.read(),
+                        "histories": histories,
                         "mxl_url": f"/mxl/{uuid4}/",  # TODO: use reverse
                     },
                 )
@@ -87,7 +107,7 @@ def index(request: HttpRequest):
     return render(
         request,
         "translator/index.html",
-        {"langs": langs, "abc": None},
+        {"langs": langs, "abc": None, "histories": []},
     )
 
 

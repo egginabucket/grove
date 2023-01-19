@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 # Quick-start development settings - unsuitable for production
@@ -136,7 +136,6 @@ DICTIONARIES = [
         "path": BASE_DIR / "carpet" / "dictionary",
     },
 ]
-DEFAULT_KEY = Key("B")
 GOOGLE_CLOUD_PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT_ID")
 
 if not GOOGLE_CLOUD_PROJECT_ID:

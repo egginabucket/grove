@@ -1,21 +1,25 @@
 from django.db import models
 from jangle.models import LanguageTag
-from functools import cache
-
 from music21.stream.base import Score, Stream
+
 from maas.speech import (
     FLEX_NOTE_RE,
-    MaasSpeech,
     AbstractFlexNote,
-    Tone,
+    MaasSpeech,
     SizeMode,
+    Tone,
 )
 
+
 class NativeLang:
-    def __new__(self) -> LanguageTag:
-        if self._lang is None:
-            self._lang, _ = LanguageTag.objects.get_or_create_from_str("x-maas-native")
-        return self._lang
+    _lang = None
+
+    def __new__(cls) -> LanguageTag:
+        if cls._lang is None:
+            cls._lang, _ = LanguageTag.objects.get_or_create_from_str(
+                "x-maas-native"
+            )
+        return cls._lang
 
 
 class FlexNote(models.Model, AbstractFlexNote):
@@ -77,7 +81,7 @@ class Lexeme(models.Model):
             return self.translations.get(lang=NativeLang()).word
 
     def __str__(self):
-        return self.translate(LanguageTag.objects.get_from_str("en"))
+        return self.translate(NativeLang())
 
 
 class LexemeTranslation(models.Model):

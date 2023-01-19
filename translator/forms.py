@@ -3,6 +3,8 @@ from django import forms
 class TranslationForm(forms.Form):
     lang = forms.CharField()
     text = forms.CharField()
+    use_ner = forms.BooleanField(required=False)
+    show_det = forms.BooleanField(required=False)
     write_slurs = forms.BooleanField(required=False)
     add_lyrics = forms.BooleanField(required=False)
     sub_rel_ents = forms.BooleanField(required=False)

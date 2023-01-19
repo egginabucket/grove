@@ -1,7 +1,6 @@
 from typing import Any, Generator, Optional
 
 from jangle.models import LanguageTag
-from nltk.corpus import WordNetCorpusReader
 
 from carpet.base import (
     CLOSE_CHAR,
@@ -17,7 +16,7 @@ from carpet.base import (
 )
 from carpet.models import Phrase, PhraseComposition, SynsetDef
 from carpet.wordnet import wordnet
-from maas.models import LexemeTranslation
+from maas.models import LexemeTranslation, NativeLang
 
 
 class StrPhrase(AbstractPhrase):
@@ -38,25 +37,25 @@ class StrPhrase(AbstractPhrase):
                     f"lexeme '{self.phrase_str}'"
                 ) from e
 
-    def __init__(self, lang: LanguageTag, phrase="") -> None:
+    def __init__(self, phrase: str, lang=NativeLang()) -> None:
         self.lang = lang
         self.phrase_str = phrase.strip()
         if self.phrase_str:
             self._check_lexeme()
 
-    def get_children(self) -> Generator[AbstractPhrase, None, None]:
+    def _get_children(self) -> Generator[AbstractPhrase, None, None]:
         if self.lexeme is not None:
             return
         if self.is_synset_linked:
             try:
                 synset = wordnet.synset(self.phrase_str)
-                yield SynsetDef.objects.get_from_synset(synset).phrase
+                yield SynsetDef.objects.get_from_synset(synset).phrase # type: ignore
             except SynsetDef.DoesNotExist as e:
                 raise SynsetDef.DoesNotExist(
                     f"undefined synset '{self.phrase_str}'"
                 ) from e
             return
-        child = StrPhrase(self.lang)
+        child = StrPhrase("", self.lang)
         depth = 0
         primary_depth = 0
         is_multiplier = False
@@ -118,7 +117,7 @@ class StrPhrase(AbstractPhrase):
                 child.suffix = char
             elif char.isspace():
                 child.phrase_str = child.phrase_str.strip()
-                if len(child.phrase_str):
+                if child.phrase_str:
                     if multiplier_str:
                         child.multiplier *= int(multiplier_str)
                     if count_str:
@@ -127,7 +126,7 @@ class StrPhrase(AbstractPhrase):
                         child.count *= int(count_str)
                     child._check_lexeme()
                     yield child
-                child = StrPhrase(self.lang)
+                child = StrPhrase("", self.lang)
                 depth = 0
                 primary_depth = 0
                 is_multiplier = False
@@ -153,7 +152,7 @@ class StrPhrase(AbstractPhrase):
             count=self.count,
             lexeme=self.lexeme,
         )
-        for i, child in enumerate(self.get_children()):
+        for i, child in enumerate(self.children):
             if isinstance(child, self.__class__):
                 child_obj = child.save()
             else:

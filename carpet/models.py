@@ -18,21 +18,21 @@ class Phrase(models.Model, AbstractPhrase):
         choices=PitchChange.choices,
         null=True,
         max_length=1,
-    )
+    )  # type: ignore
     multiplier = models.PositiveSmallIntegerField(default=1)
-    count = models.PositiveSmallIntegerField(null=True)
+    count = models.PositiveSmallIntegerField(null=True)  # type: ignore
     suffix = models.CharField(
         choices=Suffix.choices,
         null=True,
         max_length=1,
-    )
+    )  # type: ignore
     lexeme = models.ForeignKey(
         Lexeme,
         null=True,
         on_delete=models.CASCADE,
     )  # type: ignore
 
-    def get_children(self) -> Generator[Phrase, None, None]:
+    def _get_children(self) -> Generator[Phrase, None, None]:
         for child_rel in self.child_rels.order_by("index"):
             child_rel.child.is_primary = child_rel.is_primary
             yield child_rel.child
@@ -90,11 +90,11 @@ class SynsetDef(models.Model):
     """Links a WordNet synset to a Carpet phrase."""
 
     class WordnetPOS(models.TextChoices):
-        ADJ = wordnet.ADJ, "adjective"
-        ADJ_SAT = wordnet.ADJ_SAT, "satellite adjective"
-        ADV = wordnet.ADV, "adverb"
-        NOUN = wordnet.NOUN, "noun"
-        VERB = wordnet.VERB, "verb"
+        ADJ = "a", "adjective"
+        ADJ_SAT = "s", "satellite adjective"
+        ADV = "r", "adverb"
+        NOUN = "n", "noun"
+        VERB = "v", "verb"
 
     pos = models.CharField(
         "part of speech",
@@ -111,8 +111,9 @@ class SynsetDef(models.Model):
 
     @cached_property
     def synset(self) -> Synset:
-        return wordnet.synset_from_pos_and_offset(self.pos, self.wn_offset)
-        
+        synset = wordnet.synset_from_pos_and_offset(self.pos, self.wn_offset)
+        return synset  # type: ignore
+
     def __str__(self) -> str:
         return self.synset.name()  # type: ignore
 

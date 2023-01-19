@@ -68,21 +68,20 @@ FLEX_NOTE_RE = re.compile(
     )
 )
 
-
 @dataclass
 class MaasContext:
-    key: Key = settings.DEFAULT_KEY
+    key: Key = Key("B")
     sizes: SizeMappings = field(default_factory=lambda: KIRA_SIZES)
-    degree_offset = 0
-    upper_sat_degree = +4
-    lower_sat_degree = -4
-    phrase_down_degree = -2
-    phrase_up_degree = +4
+    degree_offset: int = 0
+    upper_sat_degree: int = +4
+    lower_sat_degree: int = -4
+    phrase_down_degree: int = -2
+    phrase_up_degree: int = +4
     write_slurs: bool = True
     lyrics_lang: Optional[LanguageTag] = None
     lexeme_fallback: Music21Object = Rest("half")
     """Used if no flex notes are defined for a lexeme."""
-    gender_pronouns: bool = True
+    gender_pronouns: bool = False
     peri_rest: float = 4.0
     comm_rest: float = 1.0
 
@@ -91,7 +90,7 @@ class MaasContext:
         # part.append(MetronomeMark(number=240))
         part.append(KeySignature(self.key.sharps))
         part.append(TimeSignature("16/1"))
-        #part.append(SenzaMisuraTimeSignature("0"))
+        # part.append(SenzaMisuraTimeSignature("0"))
         part.append(stream)
         md = Metadata()
         md.composer = "Grove / Null Identity"
@@ -101,11 +100,9 @@ class MaasContext:
         score.append(part)
         return score.flatten()
 
+a = MaasContext()
 
 class MaasSpeech:
-    ctx: MaasContext
-    _degree = 0
-
     def __init__(self, ctx: MaasContext):
         self.ctx = ctx
         self.reset_phrase()
