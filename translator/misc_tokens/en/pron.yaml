@@ -1,0 +1,58 @@
+# https://www.thefreedictionary.com/List-of-pronouns.htm
+# https://universaldependencies.org/u/feat/PronType.html
+
+# Personal (Prs) / Object
+it: it
+# The rest are handled automatically, including object / possessive / reflexive / intensive pronouns
+
+# Indefinite (Ind)
+all: all
+another: that
+any: come all
+anybody: person come all
+anyone: person come all
+anything: thing come all
+both: this and this
+each: all
+either: this or this
+every: all
+everybody: person all
+everyone: person all
+everything: thing all
+few: all count under
+many: all count over
+most: all count over
+neither: this! and this!
+nobody: person!
+none: come all!
+nothing: thing!
+one: person
+other: that
+others: person*2
+several: some
+some: some
+somebody: person some
+someone: person some
+something: thing some
+such: it
+
+what: what
+who: person what
+whom: person what
+whoever: person what
+whomever: person what
+place: place what
+this: this
+that: that
+# Plur handled later
+these: this
+those: that
+
+there: place that
+
+# Archaic
+thou: you
+thee: you # plur handled later
+thy: you
+thine: you
+ye: you
