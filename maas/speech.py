@@ -79,7 +79,7 @@ class MaasContext:
     phrase_up_degree: int = +4
     write_slurs: bool = True
     lyrics_lang: Optional[LanguageTag] = None
-    lexeme_fallback: Music21Object = Rest("half")
+    lexeme_fallback: Music21Object = field(default_factory=lambda: Rest("half"))
     """Used if no flex notes are defined for a lexeme."""
     gender_pronouns: bool = False
     peri_rest: float = 4.0
