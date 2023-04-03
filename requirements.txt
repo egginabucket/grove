@@ -2,7 +2,7 @@
 black
 celery==5.2.7
 dj-database-url==1.0.0
-Django==4.1.4
+Django==4.1.7
 djangorestframework==3.14.0
 django-cors-headers==3.13.0
 #django-extensions==3.2.1
